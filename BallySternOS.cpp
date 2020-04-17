@@ -500,8 +500,9 @@ void InterruptService2() {
 
       // Enable playfield strobe
       BSOS_DataWrite(ADDRESS_U10_A, 0x01<<switchCount);
-      BSOS_DataWrite(ADDRESS_U10_B_CONTROL, 0x34);      
+      BSOS_DataWrite(ADDRESS_U10_B_CONTROL, 0x34);    
       for (waitCount=0; waitCount<40; waitCount++) WaitOneClockCycle();
+
       // Read the switches
       SwitchesNow[switchCount] = BSOS_DataRead(ADDRESS_U10_B);
 
