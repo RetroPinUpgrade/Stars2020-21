@@ -976,12 +976,13 @@ void BSOS_PlaySound(byte soundByte) {
   soundControlByte &= 0xF0;
   // Add in lower nibble
   soundControlByte |= (soundByte&0x0F);
+
+    // Strobe sound latch
+  BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)|0x04);
+  
   // put the new byte on U11:PortB
   BSOS_DataWrite(ADDRESS_U11_B, soundControlByte);
   
-  // Strobe sound latch
-  BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)|0x04);
-
   // wait 200 microseconds
   delayMicroseconds(200);
 
