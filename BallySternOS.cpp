@@ -977,7 +977,10 @@ void BSOS_PlaySound(byte soundByte) {
   // Add in lower nibble
   soundControlByte |= (soundByte&0x0F);
 
-    // Strobe sound latch
+  // Put 1s on momentary solenoid lines
+  BSOS_DataWrite(ADDRESS_U11_B, oldSolenoidControlByte | 0x0F);
+
+  // Strobe sound latch
   BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)|0x04);
   
   // put the new byte on U11:PortB
