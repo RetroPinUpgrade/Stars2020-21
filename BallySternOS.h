@@ -104,6 +104,9 @@ void BSOS_ApplyFlashToLamps(unsigned long curTime);
 void BSOS_FlashAllLamps(unsigned long curTime); // Self-test function
 void BSOS_TurnOffAllLamps();
 
+//   Sound
+void BSOS_PlaySound(byte soundByte);
+
 
 byte BSOS_DataRead(int address);
 

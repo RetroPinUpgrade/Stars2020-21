@@ -959,3 +959,44 @@ void BSOS_CycleAllDisplays(unsigned long curTime) {
     BSOS_SetDisplay(count, value);
   }
 }
+
+
+void BSOS_PlaySound(byte soundByte) {
+
+  byte oldSolenoidControlByte, soundControlByte;
+
+  // mask further zero-crossing interrupts during this 
+  InsideZeroCrossingInterrupt += 1;
+
+  // Get the current value of U11:PortB
+  oldSolenoidControlByte = BSOS_DataRead(ADDRESS_U11_B);
+  soundControlByte = oldSolenoidControlByte; 
+  
+  // Mask off momentary solenoids
+  soundControlByte &= 0xF0;
+  // Add in lower nibble
+  soundControlByte |= (soundByte&0x0F);
+  // put the new byte on U11:PortB
+  BSOS_DataWrite(ADDRESS_U11_B, soundControlByte);
+  
+  // Strobe sound latch
+  BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)|0x04);
+
+  // wait 200 microseconds
+  delayMicroseconds(200);
+
+  // remove lower nibble
+  soundControlByte &= 0xF0;
+  // Put upper nibble on lines
+  soundControlByte |= (soundByte/16);
+  // put the new byte on U11:PortB
+  BSOS_DataWrite(ADDRESS_U11_B, soundControlByte);
+
+  // wait 200 microseconds
+  delayMicroseconds(200);
+
+  // Turn off sound latch
+  BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)&0xF7);
+
+  InsideZeroCrossingInterrupt -= 1;
+}
