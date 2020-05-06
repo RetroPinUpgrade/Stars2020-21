@@ -65,7 +65,7 @@ struct PlayfieldAndCabinetSwitch {
 // Function Prototypes
 
 //   Initialization
-void BSOS_InitializeMPU();
+void BSOS_InitializeMPU(int clockSpeedInKHz = 500);
 void BSOS_SetupGameSwitches(int s_numSwitches, int s_numPrioritySwitches, PlayfieldAndCabinetSwitch *s_gameSwitchArray);
 void BSOS_SetupGameLights(int s_numLights, PlayfieldLight *s_gameLightArray);
 byte BSOS_GetDipSwitches(byte index);
@@ -78,7 +78,6 @@ boolean BSOS_ReadSingleSwitchState(byte switchNum);
 void BSOS_PushToSolenoidStack(byte solenoidNumber, byte numPushes, boolean disableOverride = false);
 void BSOS_SetCoinLockout(boolean lockoutOn = false, byte solbit = CONTSOL_DISABLE_COIN_LOCKOUT);
 void BSOS_SetDisableFlippers(boolean disableFlippers = true, byte solbit = CONTSOL_DISABLE_FLIPPERS);
-//void BSOS_SetContinuousSolenoids(byte continuousSolenoidMask = CONTSOL_DISABLE_FLIPPERS | CONTSOL_DISABLE_COIN_LOCKOUT);
 byte BSOS_ReadContinuousSolenoids();
 void BSOS_DisableSolenoidStack();
 void BSOS_EnableSolenoidStack();

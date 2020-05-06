@@ -5,6 +5,8 @@
 
 
 // Global variables
+int SwitchDelayNumLoops = 40;
+int LampDelayNumLoops = 30;
 volatile byte DisplayDigits[5][6];
 volatile byte DisplayDigitEnable[5];
 volatile boolean DisplayDim[5];
@@ -148,7 +150,7 @@ byte BSOS_DataRead(int address) {
 
 
 void WaitOneClockCycle() {
-    // Wait while clock is low
+  // Wait while clock is low
   while(!(PIND & 0x10));
 
   // Wait for a falling edge of the clock
@@ -197,25 +199,29 @@ void ReadDipSwitches() {
   // Turn on Switch strobe 5 & Read Switches
   BSOS_DataWrite(ADDRESS_U10_A, 0x20);
   BSOS_DataWrite(ADDRESS_U10_B_CONTROL, backupU10BControl & 0xF7);
-  for (int count=0; count<40; count++) WaitOneClockCycle();
+  // Wait for switch capacitors to charge
+  for (int count=0; count<SwitchDelayNumLoops; count++) WaitOneClockCycle();
   DipSwitches[0] = BSOS_DataRead(ADDRESS_U10_B);
 
   // Turn on Switch strobe 6 & Read Switches
   BSOS_DataWrite(ADDRESS_U10_A, 0x40);
   BSOS_DataWrite(ADDRESS_U10_B_CONTROL, backupU10BControl & 0xF7);
-  for (int count=0; count<40; count++) WaitOneClockCycle();
+  // Wait for switch capacitors to charge
+  for (int count=0; count<SwitchDelayNumLoops; count++) WaitOneClockCycle();
   DipSwitches[1] = BSOS_DataRead(ADDRESS_U10_B);
 
   // Turn on Switch strobe 7 & Read Switches
   BSOS_DataWrite(ADDRESS_U10_A, 0x80);
   BSOS_DataWrite(ADDRESS_U10_B_CONTROL, backupU10BControl & 0xF7);
-  for (int count=0; count<40; count++) WaitOneClockCycle();
+  // Wait for switch capacitors to charge
+  for (int count=0; count<SwitchDelayNumLoops; count++) WaitOneClockCycle();
   DipSwitches[2] = BSOS_DataRead(ADDRESS_U10_B);
 
   // Turn on U10 CB2 (strobe 8) and read switches
   BSOS_DataWrite(ADDRESS_U10_A, 0x00);
   BSOS_DataWrite(ADDRESS_U10_B_CONTROL, backupU10BControl | 0x08);
-  for (int count=0; count<40; count++) WaitOneClockCycle();
+  // Wait for switch capacitors to charge
+  for (int count=0; count<SwitchDelayNumLoops; count++) WaitOneClockCycle();
   DipSwitches[3] = BSOS_DataRead(ADDRESS_U10_B);
 
   BSOS_DataWrite(ADDRESS_U10_B_CONTROL, backupU10BControl);
@@ -500,9 +506,11 @@ void InterruptService2() {
 
       // Enable playfield strobe
       BSOS_DataWrite(ADDRESS_U10_A, 0x01<<switchCount);
-      BSOS_DataWrite(ADDRESS_U10_B_CONTROL, 0x34);    
-      for (waitCount=0; waitCount<40; waitCount++) WaitOneClockCycle();
+      BSOS_DataWrite(ADDRESS_U10_B_CONTROL, 0x34);
 
+      // Delay for switch capacitors to charge
+      for (waitCount=0; waitCount<SwitchDelayNumLoops; waitCount++) WaitOneClockCycle();      
+      
       // Read the switches
       SwitchesNow[switchCount] = BSOS_DataRead(ADDRESS_U10_B);
 
@@ -563,7 +571,8 @@ void InterruptService2() {
       }
 
       interrupts();
-      for (waitCount=0; waitCount<30; waitCount++) WaitOneClockCycle();
+      // Wait so total delay will allow lamp SCRs to get to the proper voltage
+      for (waitCount=0; waitCount<LampDelayNumLoops; waitCount++) WaitOneClockCycle();
       noInterrupts();
     }
     BSOS_DataWrite(ADDRESS_U10_A, backup10A);
@@ -577,12 +586,6 @@ void InterruptService2() {
       CurrentSolenoidByte = (CurrentSolenoidByte&0xF0) | SOL_NONE;
       BSOS_DataWrite(ADDRESS_U11_B, CurrentSolenoidByte);
     }
-
-    // Have to wait 350 cycles if we're looking at rising edge of zero crossing
-    // REMOVED because now I waste this time reading the switches
-//    interrupts();
-//    for (waitCount=0; waitCount<350; waitCount++) WaitOneClockCycle();
-//    noInterrupts();
 
     for (int lampBitCount = 0; lampBitCount<15; lampBitCount++) {
       byte lampData = 0xF0 + lampBitCount;
@@ -789,9 +792,15 @@ void BSOS_TurnOffAllLamps() {
 }
 
 
-void BSOS_InitializeMPU() {
+void BSOS_InitializeMPU(int clockSpeedInKHz = 500) {
   // Wait for board to boot
   delay(100);
+
+  // 80 us
+  SwitchDelayNumLoops = (int)(0.080f * (float)clockSpeedInKHz);
+
+  // 60 us
+  LampDelayNumLoops = (int)(0.060f * (float)clockSpeedInKHz);
   
   // Arduino A0 = MPU A0
   // Arduino A1 = MPU A1
