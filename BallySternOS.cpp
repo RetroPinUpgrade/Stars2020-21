@@ -661,15 +661,15 @@ void BSOS_SetDisplayBlank(int displayNumber, byte bitMask) {
 //   bit=   b0 b1 b2 b3 b4 b5
 
 
-void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value) {
+void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byte minDigits=2) {
   if (displayNumber<0 || displayNumber>4) return;
 
   DisplayDigitEnable[displayNumber] = 0x20;
-  if (value>9) DisplayDigitEnable[displayNumber] |= 0x10;
-  if (value>99) DisplayDigitEnable[displayNumber] |= 0x08;
-  if (value>999) DisplayDigitEnable[displayNumber] |= 0x04;
-  if (value>9999) DisplayDigitEnable[displayNumber] |= 0x02;
-  if (value>99999) DisplayDigitEnable[displayNumber] |= 0x01;
+  if (value>9 || minDigits>1) DisplayDigitEnable[displayNumber] |= 0x10;
+  if (value>99 || minDigits>2) DisplayDigitEnable[displayNumber] |= 0x08;
+  if (value>999 || minDigits>3) DisplayDigitEnable[displayNumber] |= 0x04;
+  if (value>9999 || minDigits>4) DisplayDigitEnable[displayNumber] |= 0x02;
+  if (value>99999 || minDigits>5) DisplayDigitEnable[displayNumber] |= 0x01;
 }
 
 byte BSOS_GetDisplayBlank(int displayNumber) {

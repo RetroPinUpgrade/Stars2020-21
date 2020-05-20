@@ -107,7 +107,7 @@ void BSOS_UpdateTimedSolenoidStack(unsigned long curTime);
 //   Displays
 void BSOS_SetDisplay(int displayNumber, unsigned long value);
 void BSOS_SetDisplayBlank(int displayNumber, byte bitMask);
-void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value);
+void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byte minDigits=2);
 void BSOS_SetDisplayBlankForCreditMatch(boolean creditsOn, boolean matchOn);
 void BSOS_SetDisplayCredits(int value, boolean displayOn = true);
 void BSOS_SetDisplayMatch(int value, boolean displayOn = true);
