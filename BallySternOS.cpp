@@ -1,4 +1,5 @@
 #include <arduino.h>
+#include <EEPROM.h>
 #define DEBUG_MESSAGES    1
 #define BALLY_STERN_CPP_FILE
 #include "BallySternOS.h"
@@ -671,6 +672,11 @@ void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value) {
   if (value>99999) DisplayDigitEnable[displayNumber] |= 0x01;
 }
 
+byte BSOS_GetDisplayBlank(int displayNumber) {
+  if (displayNumber<0 || displayNumber>4) return 0;
+  return DisplayDigitEnable[displayNumber];
+}
+
 void BSOS_SetDisplayBlankForCreditMatch(boolean creditsOn, boolean matchOn) {
   DisplayDigitEnable[4] = 0;
   if (creditsOn) DisplayDigitEnable[4] |= 0x03;
@@ -1012,4 +1018,70 @@ void BSOS_PlaySound(byte soundByte) {
   BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)&0xF7);
 
   InsideZeroCrossingInterrupt -= 1;
+}
+
+
+
+// EEProm Helper functions
+
+void BSOS_WriteCreditsToEEProm(byte credits) {
+  EEPROM.write(BSOS_CREDITS_EEPROM_BYTE, credits);
+}
+
+byte BSOS_ReadCreditsFromEEProm() {
+  byte value = EEPROM.read(BSOS_CREDITS_EEPROM_BYTE);
+
+  // If this value is unset, set it
+  if (value==0xFF) {
+    value = 0;
+    BSOS_WriteCreditsToEEProm(value);
+  }
+  return value;
+}
+
+void BSOS_WriteHighScoreToEEProm(unsigned long score) {
+  EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+3, (byte)(score>>24));
+  EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+2, (byte)((score>>16) & 0x000000FF));
+  EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+1, (byte)((score>>8) & 0x000000FF));
+  EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE, (byte)(score & 0x000000FF));
+        Serial.write("Saving high score (3)\n");
+}
+
+unsigned long BSOS_ReadHighScoreFromEEProm() {
+  unsigned long value;
+
+  value = (((unsigned long)EEPROM.read(BSOS_HIGHSCORE_EEPROM_START_BYTE+3))<<24) | 
+          ((unsigned long)(EEPROM.read(BSOS_HIGHSCORE_EEPROM_START_BYTE+2))<<16) | 
+          ((unsigned long)(EEPROM.read(BSOS_HIGHSCORE_EEPROM_START_BYTE+1))<<8) | 
+          ((unsigned long)(EEPROM.read(BSOS_HIGHSCORE_EEPROM_START_BYTE)));
+
+  if (value==0xFFFFFFFF) {
+    value = 100000; // default score
+    BSOS_WriteHighScoreToEEProm(value);
+  }
+  return value;
+}
+
+
+unsigned long BSOS_ReadULFromEEProm(unsigned short startByte) {
+  unsigned long value;
+
+  value = (((unsigned long)EEPROM.read(startByte+3))<<24) | 
+          ((unsigned long)(EEPROM.read(startByte+2))<<16) | 
+          ((unsigned long)(EEPROM.read(startByte+1))<<8) | 
+          ((unsigned long)(EEPROM.read(startByte)));
+
+  if (value==0xFFFFFFFF) {
+    value = 0; 
+    BSOS_WriteULToEEProm(startByte, value);
+  }
+  return value;
+}
+
+
+void BSOS_WriteULToEEProm(unsigned short startByte, unsigned long value) {
+  EEPROM.write(startByte+3, (byte)(value>>24));
+  EEPROM.write(startByte+2, (byte)((value>>16) & 0x000000FF));
+  EEPROM.write(startByte+1, (byte)((value>>8) & 0x000000FF));
+  EEPROM.write(startByte, (byte)(value & 0x000000FF));
 }

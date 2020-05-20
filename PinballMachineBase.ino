@@ -1,6 +1,6 @@
 #include "BallySternOS.h"
 #include "PinballMachineBaseDefinitions.h"
-#include <EEPROM.h>
+#include "SelfTestAndAudit.h"
 
 #define DEBUG_MESSAGES  1
 
@@ -10,11 +10,6 @@
 //  positive - game play
 int MachineState = 0;
 boolean MachineStateChanged = true;
-#define MACHINE_STATE_TEST_LIGHTS     -1
-#define MACHINE_STATE_TEST_DISPLAYS   -2
-#define MACHINE_STATE_TEST_SOLENOIDS  -3
-#define MACHINE_STATE_TEST_HISCR      -4
-#define MACHINE_STATE_TEST_DONE       -5
 #define MACHINE_STATE_ATTRACT         0
 #define MACHINE_STATE_INIT_GAMEPLAY   1
 #define MACHINE_STATE_INIT_NEW_BALL   2
@@ -39,60 +34,53 @@ unsigned long CurrentScores[4];
 unsigned long CurrentTime = 0;
 
 
-// EEPROM functions should be called as infrequently as possible
-// because the EEPROM can only be read or written a limited number of 
-// times 
-#define CREDITS_EEPROM_BYTE         5
-#define HIGHSCORE_EEPROM_START_BYTE 1
-
-void WriteCreditsToEEProm(byte credits) {
-  EEPROM.write(CREDITS_EEPROM_BYTE, credits);
-}
-
-byte ReadCreditsFromEEProm() {
-  byte value = EEPROM.read(CREDITS_EEPROM_BYTE);
-
-  // If this value is unset, set it
-  if (value==0xFF) {
-    value = 0;
-    WriteCreditsToEEProm(value);
-  }
-  return value;
-}
-
-void WriteHighScoreToEEProm(unsigned long score) {
-  EEPROM.write(HIGHSCORE_EEPROM_START_BYTE+3, (byte)(score>>24));
-  EEPROM.write(HIGHSCORE_EEPROM_START_BYTE+2, (byte)((score>>16) & 0x000000FF));
-  EEPROM.write(HIGHSCORE_EEPROM_START_BYTE+1, (byte)((score>>8) & 0x000000FF));
-  EEPROM.write(HIGHSCORE_EEPROM_START_BYTE, (byte)(score & 0x000000FF));
-}
-
-unsigned long ReadHighScoreFromEEProm() {
-  unsigned long value;
-
-  value = (((unsigned long)EEPROM.read(HIGHSCORE_EEPROM_START_BYTE+3))<<24) | 
-          ((unsigned long)(EEPROM.read(HIGHSCORE_EEPROM_START_BYTE+2))<<16) | 
-          ((unsigned long)(EEPROM.read(HIGHSCORE_EEPROM_START_BYTE+1))<<8) | 
-          ((unsigned long)(EEPROM.read(HIGHSCORE_EEPROM_START_BYTE)));
-
-  if (value==0xFFFFFFFF) {
-    value = 100000; // default score
-    WriteHighScoreToEEProm(value);
-  }
-  return value;
-}
-
 
 
 
 
 void setup() {
   if (DEBUG_MESSAGES) {
-    Serial.begin(57600);
+    Serial.begin(115200);
   }
     
   // Tell the OS about game-specific lights and switches
   BSOS_SetupGameSwitches(NUM_SWITCHES_WITH_TRIGGERS, NUM_PRIORITY_SWITCHES_WITH_TRIGGERS, TriggeredSwitches);
+
+/*
+  int testVal;
+  if (testVal = BSOS_TestPIAChip(10, 0)) {
+    if (DEBUG_MESSAGES) {
+      char buf[32];
+      sprintf(buf, "Failed test on U10:A (%d)\n", testVal);
+      Serial.write(buf);    
+    }
+  }
+  if (testVal = BSOS_TestPIAChip(10, 1)) {
+    if (DEBUG_MESSAGES) {
+      char buf[32];
+      sprintf(buf, "Failed test on U10:B (%d)\n", testVal);
+      Serial.write(buf);    
+    }
+  }
+  if (testVal = BSOS_TestPIAChip(11, 0)) {
+    if (DEBUG_MESSAGES) {
+      char buf[32];
+      sprintf(buf, "Failed test on U11:A (%d)\n", testVal);
+      Serial.write(buf);    
+    }
+  }
+  if (testVal = BSOS_TestPIAChip(11, 1)) {
+    if (DEBUG_MESSAGES) {
+      char buf[32];
+      sprintf(buf, "Failed test on U11:B (%d)\n", testVal);
+      Serial.write(buf);    
+    }
+  }
+*/
+
+  if (DEBUG_MESSAGES) {
+    Serial.write("Attempting to initialize the MPU\n");
+  }
  
   // Set up the chips and interrupts
   BSOS_InitializeMPU();
@@ -103,108 +91,20 @@ void setup() {
 
   // Use dip switches to set up game variables
 
+  if (DEBUG_MESSAGES) {
+    Serial.write("Done with setup\n");
+  }
+
 }
 
 
-
-unsigned long LastSelfTestChange = 0;
-int LastTestSolNum = -1;
-unsigned long LastSolTestTime = 0;
-
-int RunSelfTest(int curState, boolean curStateChanged) {
-  byte curSwitch = BSOS_PullFirstFromSwitchStack();
-  int returnState = curState;
-
-  // Things to add:
-  //  Free Play Mode
-  //  Extra ball/credit award scores (3)
-  
-  if (curSwitch==SW_SELF_TEST_SWITCH && (CurrentTime-LastSelfTestChange)>500) {
-    returnState -= 1;
-    if (returnState==MACHINE_STATE_TEST_DONE) returnState = MACHINE_STATE_ATTRACT;
-    LastSelfTestChange = CurrentTime;
-  }
-
-  if (curState==MACHINE_STATE_TEST_LIGHTS) {
-    if (curStateChanged) {
-      for (int count=0; count<4; count++) {
-        BSOS_SetDisplay(count, 0);
-        BSOS_SetDisplayBlank(count, 0x00);
-        BSOS_DisableSolenoidStack();        
-        BSOS_SetDisableFlippers(true);
-      }
-      BSOS_SetDisableFlippers(true);
-      BSOS_SetDisplayCredits(1);
-      BSOS_TurnOffAllLamps();
-      for (int count=0; count<60; count++) {
-        BSOS_SetLampState(count, 1, 0, 500);
-      }
-    }
-    BSOS_SetDisplayFlash(4, CurrentTime, 500);
-    BSOS_ApplyFlashToLamps(CurrentTime);
-  } else if (curState==MACHINE_STATE_TEST_DISPLAYS) {
-    if (curStateChanged) {
-      BSOS_TurnOffAllLamps();
-      for (int count=0; count<5; count++) {
-        BSOS_SetDisplay(count, 0);
-        BSOS_SetDisplayBlank(count, 0x3F);   
-        BSOS_SetDisableFlippers(true);       
-      }
-      BSOS_DisableSolenoidStack();        
-    }
-    BSOS_CycleAllDisplays(CurrentTime);
-  } else if (curState==MACHINE_STATE_TEST_SOLENOIDS) {
-    if (curStateChanged) {
-      for (int count=0; count<4; count++) {
-        BSOS_SetDisplay(count, 0);
-        BSOS_SetDisplayBlank(count, 0x00);        
-      }
-      BSOS_SetDisplayCredits(3);
-      BSOS_TurnOffAllLamps();
-      LastSolTestTime = CurrentTime;
-      BSOS_EnableSolenoidStack(); 
-      BSOS_SetDisableFlippers(false);       
-    }
-
-    int testSolNum = ((CurrentTime-LastSolTestTime)/1000)%15;
-    if (testSolNum!=LastTestSolNum) {
-      LastTestSolNum = testSolNum;
-      BSOS_PushToSolenoidStack(testSolNum, 3);
-      BSOS_SetDisplay(0, testSolNum);
-      BSOS_SetDisplayBlankByMagnitude(0, testSolNum);
-    }
-    
-    BSOS_SetDisplayFlash(4, CurrentTime, 500);    
-  } else if (curState==MACHINE_STATE_TEST_HISCR) {
-    if (curStateChanged) {
-      for (int count=0; count<4; count++) {
-        BSOS_SetDisplay(count, 0);
-        BSOS_SetDisplayBlank(count, 0x00);        
-      }
-      BSOS_SetDisplayCredits(4);
-      BSOS_TurnOffAllLamps();
-      BSOS_DisableSolenoidStack();
-      BSOS_SetDisplay(0, HighScore);
-      BSOS_SetDisplayBlankByMagnitude(0, HighScore);
-      BSOS_SetDisableFlippers(true);
-    }
-    if (curSwitch==SW_CREDIT_RESET) {
-      HighScore = 50000;
-      BSOS_SetDisplay(0, HighScore);
-      BSOS_SetDisplayBlankByMagnitude(0, HighScore);
-      WriteHighScoreToEEProm(HighScore);
-    }
-  }
-
-  return returnState;
-}
 
 
 
 void AddCredit() {
   if (Credits<MaximumCredits) {
     Credits++;
-    WriteCreditsToEEProm(Credits);
+    BSOS_WriteCreditsToEEProm(Credits);
 //    PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
   } else {
   }
@@ -229,13 +129,31 @@ boolean AddPlayer() {
 
   if (!FreePlayMode) {
     Credits -= 1;
-    WriteCreditsToEEProm(Credits);
+    BSOS_WriteCreditsToEEProm(Credits);
   }
 //  PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1+(CurrentNumPlayers-1));
 //  SetNumPlayersLamp(CurrentNumPlayers);
 
   return true;
 }
+
+
+
+int RunSelfTest(int curState, boolean curStateChanged) {
+  int returnState = curState;
+  CurrentNumPlayers = 0;
+
+  // Any state that's greater than CHUTE_3 is handled by the Base Self-test code
+  // Any that's less, is machine specific, so we handle it here.
+  if (curState>=MACHINE_STATE_TEST_CHUTE_3_COINS) {
+    returnState = RunBaseSelfTest(returnState, curStateChanged, CurrentTime, SW_CREDIT_RESET);  
+  } else {
+    returnState = MACHINE_STATE_ATTRACT;
+  }
+
+  return returnState;
+}
+
 
 
 byte AttractLastHeadMode = 255;
@@ -344,9 +262,9 @@ int RunAttractMode(int curState, boolean curStateChanged) {
       AddCredit();
       BSOS_SetDisplayCredits(Credits, true);
     }
-    if (switchHit==SW_SELF_TEST_SWITCH && (CurrentTime-LastSelfTestChange)>500) {
+    if (switchHit==SW_SELF_TEST_SWITCH && (CurrentTime-GetLastSelfTestChangedTime())>500) {
       returnState = MACHINE_STATE_TEST_LIGHTS;
-      LastSelfTestChange = CurrentTime;
+      SetLastSelfTestChangedTime(CurrentTime);
     }
   }
 
@@ -363,7 +281,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     switch (switchHit) {
       case SW_SELF_TEST_SWITCH:
         returnState = MACHINE_STATE_TEST_LIGHTS;
-        LastSelfTestChange = CurrentTime;
+        SetLastSelfTestChangedTime(CurrentTime);
         break; 
       case SW_COIN_1:
       case SW_COIN_2:

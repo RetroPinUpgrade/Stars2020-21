@@ -61,6 +61,18 @@ struct PlayfieldAndCabinetSwitch {
 #define CONTSOL_DISABLE_FLIPPERS      0x40
 #define CONTSOL_DISABLE_COIN_LOCKOUT  0x20
 
+#define BSOS_CREDITS_EEPROM_BYTE          5
+#define BSOS_HIGHSCORE_EEPROM_START_BYTE  1
+#define BSOS_AWARD_SCORE_1_EEPROM_START_BYTE      10
+#define BSOS_AWARD_SCORE_2_EEPROM_START_BYTE      14
+#define BSOS_AWARD_SCORE_3_EEPROM_START_BYTE      18
+#define BSOS_TOTAL_PLAYS_EEPROM_START_BYTE        26
+#define BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE      30
+#define BSOS_TOTAL_HISCORE_BEATEN_START_BYTE      34
+#define BSOS_CHUTE_2_COINS_START_BYTE             38
+#define BSOS_CHUTE_1_COINS_START_BYTE             42
+#define BSOS_CHUTE_3_COINS_START_BYTE             46
+
 
 // Function Prototypes
 
@@ -69,6 +81,14 @@ void BSOS_InitializeMPU(int clockSpeedInKHz = 500);
 void BSOS_SetupGameSwitches(int s_numSwitches, int s_numPrioritySwitches, PlayfieldAndCabinetSwitch *s_gameSwitchArray);
 void BSOS_SetupGameLights(int s_numLights, PlayfieldLight *s_gameLightArray);
 byte BSOS_GetDipSwitches(byte index);
+
+// EEProm Helper Functions
+unsigned long BSOS_ReadHighScoreFromEEProm();
+void BSOS_WriteHighScoreToEEProm(unsigned long score);
+byte BSOS_ReadCreditsFromEEProm();
+void BSOS_WriteCreditsToEEProm(byte credits);
+unsigned long BSOS_ReadULFromEEProm(unsigned short startByte);
+void BSOS_WriteULToEEProm(unsigned short startByte, unsigned long value);
 
 //   Swtiches
 byte BSOS_PullFirstFromSwitchStack();
@@ -96,6 +116,7 @@ void BSOS_SetDisplayBIPBlank(byte digitsOn=1);
 void BSOS_SetDisplayFlash(int displayNumber, unsigned long curTime, int period=500, unsigned long magnitude=999999);
 void BSOS_SetDisplayFlashCredits(unsigned long curTime, int period=100);
 void BSOS_CycleAllDisplays(unsigned long curTime); // Self-test function
+byte BSOS_GetDisplayBlank(int displayNumber);
 
 //   Lamps
 void BSOS_SetLampState(int lampNum, byte s_lampState, byte s_lampDim=0, int s_lampFlashPeriod=0);
