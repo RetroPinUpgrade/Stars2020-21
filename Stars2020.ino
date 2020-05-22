@@ -2,11 +2,11 @@
 #include "SternStarsDefinitions.h"
 #include "SelfTestAndAudit.h"
 #include <EEPROM.h>
-#include <AltSoftSerial.h>
-#include <wavTrigger.h>
+//#include <AltSoftSerial.h>
+//#include <wavTrigger.h>
 
 
-wavTrigger wTrig;             // Our WAV Trigger object
+//wavTrigger wTrig;             // Our WAV Trigger object
 
 #define DEBUG_MESSAGES  0
 
