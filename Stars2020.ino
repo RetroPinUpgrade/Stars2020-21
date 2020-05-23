@@ -8,7 +8,7 @@
 
 //wavTrigger wTrig;             // Our WAV Trigger object
 
-#define DEBUG_MESSAGES  0
+#define DEBUG_MESSAGES  1
 
 /*********************************************************************
 *
@@ -1224,7 +1224,7 @@ int NormalGamePlay() {
         
         // if we haven't used the ball save, and we're under the time limit, then save the ball
         if (  !BallSaveUsed && 
-              ((CurrentTime-BallFirstSwitchHitTime)/1000)<BallSaveNumSeconds ) {
+              ((CurrentTime-BallFirstSwitchHitTime)/1000)<((unsigned long)BallSaveNumSeconds) ) {
         
           BSOS_PushToTimedSolenoidStack(SOL_OUTHOLE, 4, CurrentTime + 100);
           if (BallFirstSwitchHitTime>0) {
@@ -1908,12 +1908,12 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
   
       switch (switchHit) {
         case SW_SLAM:
-          BSOS_DisableSolenoidStack();
-          BSOS_SetDisableFlippers(true);
-          BSOS_TurnOffAllLamps();
-          BSOS_SetLampState(GAME_OVER, 1);
-          delay(1000);
-          return MACHINE_STATE_ATTRACT;
+//          BSOS_DisableSolenoidStack();
+//          BSOS_SetDisableFlippers(true);
+//          BSOS_TurnOffAllLamps();
+//          BSOS_SetLampState(GAME_OVER, 1);
+//          delay(1000);
+//          return MACHINE_STATE_ATTRACT;
           break;
         case SW_TILT:
           // This should be debounced
