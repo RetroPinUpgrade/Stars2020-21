@@ -95,7 +95,7 @@ unsigned long AwardScores[3];
 byte Credits = 0;
 boolean FreePlayMode = false;
 
-byte dipBank0, dipBank1, dipBank2, dipBank3;
+byte dipBank0;
 byte MusicLevel = 2;
 byte CurrentPlayer = 0;
 byte CurrentBallInPlay = 1;
@@ -122,8 +122,6 @@ unsigned long BallFirstSwitchHitTime = 0;
 unsigned long CurrentTime = 0;
 unsigned long LastBumperHitTime = 0;
 unsigned long BallTimeInTrough = 0;
-unsigned long LeftSpinnerHurryUp = 0;
-unsigned long RightSpinnerHurryUp = 0;
 unsigned long DropTargetSpinnerGoal = 0;
 unsigned long WizardModeStartTime = 0;
 
@@ -170,6 +168,8 @@ void setup() {
   BSOS_InitializeMPU();
   BSOS_DisableSolenoidStack();
   BSOS_SetDisableFlippers(true);
+
+  byte dipBank1, dipBank2, dipBank3;
 
   dipBank0 = BSOS_GetDipSwitches(0);
   ScoreAwardReplay = (dipBank0&0x20) ? 7 : 0;
@@ -276,6 +276,103 @@ void setup() {
   
   PlaySoundEffect(SOUND_EFFECT_MACHINE_START);
 }
+
+
+
+////////////////////////////////////////////////////////////////////////////
+//
+//  Lamp Management functions
+//
+////////////////////////////////////////////////////////////////////////////
+void SetPlayerLamps(byte numPlayers, byte playerOffset=0, int flashPeriod=0) {
+  // For Stars, the "Player Up" lights are all +4 of the "Player" lights
+  // so this function covers both sets of lights. Putting a 4 in playerOffset
+  // will turn on/off the player up lights.
+  BSOS_SetLampState(PLAYER_1+playerOffset, (numPlayers==1)?1:0, 0, flashPeriod);
+  BSOS_SetLampState(PLAYER_2+playerOffset, (numPlayers==2)?1:0, 0, flashPeriod);
+  BSOS_SetLampState(PLAYER_3+playerOffset, (numPlayers==3)?1:0, 0, flashPeriod);
+  BSOS_SetLampState(PLAYER_4+playerOffset, (numPlayers==4)?1:0, 0, flashPeriod);
+}
+
+void SetStarLampState(int starNum, byte state, byte dim, int flash) {
+  if (starNum<0 || starNum>4) return;
+  switch (starNum) {
+    case 0: BSOS_SetLampState(STAR_WHITE, state, dim, flash); break;
+    case 1: BSOS_SetLampState(STAR_GREEN, state, dim, flash); break;
+    case 2: BSOS_SetLampState(STAR_AMBER, state, dim, flash); break;
+    case 3: BSOS_SetLampState(STAR_PURPLE, state, dim, flash); break;
+    case 4: BSOS_SetLampState(STAR_YELLOW, state, dim, flash); break;
+  }
+}
+
+void ShowStarGoalCompleteLights(byte on) {
+  BSOS_SetLampState(SPECIAL_PURPLE_STAR, on, 0, 400);
+  BSOS_SetLampState(SPECIAL_WHITE_STAR, on, 0, 450);
+  BSOS_SetLampState(SPECIAL_GREEN_STAR, on, 0, 500);
+  BSOS_SetLampState(SPECIAL_AMBER_STAR, on, 0, 550);
+  BSOS_SetLampState(SPECIAL_YELLOW_STAR, on, 0, 600);
+}
+
+void SetLeftSpinnerLights(int bonusX) {
+
+  if (bonusX<6) {
+    if (DropTargetSpinnerGoal && ((CurrentTime-DropTargetSpinnerGoal)/1000)<DROP_TARGET_GOAL_TIME) {
+      int lightSweep = ((CurrentTime-DropTargetSpinnerGoal)/250)%3;
+      BSOS_SetLampState(SPECIAL_FEATURE, (lightSweep==0)?1:0);
+      BSOS_SetLampState(D400_1_SPINNER, (lightSweep==2)?1:0);
+      BSOS_SetLampState(D400_2_SPINNER, (lightSweep==1)?1:0);    
+    } else {
+      BSOS_SetLampState(SPECIAL_FEATURE, (bonusX>3)?1:0, (bonusX==4)?1:0, (bonusX>5)?500:0);  
+      BSOS_SetLampState(D400_1_SPINNER, (Spinner400Bonus>0)?1:0);
+      BSOS_SetLampState(D400_2_SPINNER, (Spinner400Bonus>1)?1:0);    
+    }
+  } else {
+    BSOS_SetLampState(D400_1_SPINNER, (Spinner400Bonus>0)?1:0);
+    BSOS_SetLampState(D400_2_SPINNER, (Spinner400Bonus>1)?1:0);    
+  }
+}
+
+void SetDropTargetRelatedLights(int bonusX) {
+
+  // Lights at bottom of playfield
+  BSOS_SetLampState(DOUBLE_BONUS, (bonusX==2)?1:0);  
+  BSOS_SetLampState(TRIPLE_BONUS, (bonusX>2)?1:0);
+
+  if (BallSaveNumSeconds==0 || (BallFirstSwitchHitTime>0 && ((CurrentTime-BallFirstSwitchHitTime)/1000)>BallSaveNumSeconds)) {
+    // Only set this lamp here, if there's no ballsave or
+    // the playfield is validated & the ballsave is expired
+    BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
+  }
+
+  // Lights indicating next award
+  BSOS_SetLampState(DOUBLE_BONUS_FEATURE, (bonusX==1)?1:0);
+  BSOS_SetLampState(TRIPLE_BONUS_FEATURE, (bonusX==2)?1:0);
+  BSOS_SetLampState(WOW, (bonusX==3)?1:0);  
+  BSOS_SetLampState(SPECIAL_FEATURE, (bonusX>3)?1:0, (bonusX==4)?1:0, (bonusX>5)?500:0);  
+
+  BSOS_SetLampState(D7000_LEFT, Left7kLight);
+  BSOS_SetLampState(D7000_RIGHT, Right7kLight);
+  SetLeftSpinnerLights(bonusX);
+}
+
+void SetBonusIndicator(byte number, byte state, byte dim, int flashPeriod=0) {
+  if (number==0 || number>10) return;
+  switch (number) {
+    case 1: BSOS_SetLampState(D1K_BONUS, state, dim, flashPeriod); break;
+    case 2: BSOS_SetLampState(D2K_BONUS, state, dim, flashPeriod); break;
+    case 3: BSOS_SetLampState(D3K_BONUS, state, dim, flashPeriod); break;
+    case 4: BSOS_SetLampState(D4K_BONUS, state, dim, flashPeriod); break;
+    case 5: BSOS_SetLampState(D5K_BONUS, state, dim, flashPeriod); break;
+    case 6: BSOS_SetLampState(D6K_BONUS, state, dim, flashPeriod); break;
+    case 7: BSOS_SetLampState(D7K_BONUS, state, dim, flashPeriod); break;
+    case 8: BSOS_SetLampState(D8K_BONUS, state, dim, flashPeriod); break;
+    case 9: BSOS_SetLampState(D9K_BONUS, state, dim, flashPeriod); break;
+    case 10: BSOS_SetLampState(D10K_BONUS, state, dim, flashPeriod); break;
+  }
+}
+
+
+
 
 
 void AddCoinToAudit(byte switchHit) {
@@ -482,10 +579,7 @@ int RunAttractMode(int curState, boolean curStateChanged) {
     if (AttractLastHeadMode!=1) {
       BSOS_SetLampState(HIGHEST_SCORE, 1, 0, 250);
       BSOS_SetLampState(GAME_OVER, 0);
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 0);
+      SetPlayerLamps(0);
   
       for (int count=0; count<4; count++) {
         BSOS_SetDisplay(count, HighScore);
@@ -525,27 +619,7 @@ int RunAttractMode(int curState, boolean curStateChanged) {
         }
       }
     }
-    if ((CurrentTime/250)%4==0) {
-      BSOS_SetLampState(PLAYER_1, 1);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 0);
-    } else if ((CurrentTime/250)%4==1) {
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 1);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 0);
-    } else if ((CurrentTime/250)%4==2) {
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 1);
-      BSOS_SetLampState(PLAYER_4, 0);
-    } else {
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 1);
-    }
+    SetPlayerLamps(((CurrentTime/250)%4) + 1);
     AttractLastHeadMode = 2;
   }
 
@@ -602,7 +676,6 @@ int RunAttractMode(int curState, boolean curStateChanged) {
       AttractLastStarTime = CurrentTime;
     }
 
-    BSOS_ApplyFlashToLamps(CurrentTime);
     AttractLastPlayfieldMode = 2;
   }
 
@@ -626,17 +699,6 @@ int RunAttractMode(int curState, boolean curStateChanged) {
   return returnState;
 }
 
-
-void SetStarLampState(int starNum, byte state, byte dim, int flash) {
-  if (starNum<0 || starNum>4) return;
-  switch (starNum) {
-    case 0: BSOS_SetLampState(STAR_WHITE, state, dim, flash); break;
-    case 1: BSOS_SetLampState(STAR_GREEN, state, dim, flash); break;
-    case 2: BSOS_SetLampState(STAR_AMBER, state, dim, flash); break;
-    case 3: BSOS_SetLampState(STAR_PURPLE, state, dim, flash); break;
-    case 4: BSOS_SetLampState(STAR_YELLOW, state, dim, flash); break;
-  }
-}
 
 
 void PlaySoundEffect(byte soundEffectNum) {
@@ -832,16 +894,11 @@ int InitializeGamePlay() {
   // us into this mode, so we assume a 1-player game
   // at the moment
   BSOS_EnableSolenoidStack();
-  if (Credits>=MaximumCredits) {
-    BSOS_SetCoinLockout(true);
-  } else {
-    BSOS_SetCoinLockout(false);
-  }
+  BSOS_SetCoinLockout((Credits>=MaximumCredits)?true:false);
   BSOS_TurnOffAllLamps();
 
   // Turn back on all lamps that are needed
-  BSOS_SetLampState(PLAYER_1, 1);
-
+  SetPlayerLamps(1);
 
   // Reset displays & game state variables
   for (int count=0; count<4; count++) {
@@ -879,7 +936,7 @@ int InitializeGamePlay() {
 }
 
 
-int InitializeNewBall(bool curStateChanged, int playerNum, int ballNum) {  
+int InitializeNewBall(bool curStateChanged, byte playerNum, int ballNum) {  
 
   // If we're coming into this mode for the first time
   // then we have to do everything to set up the new ball
@@ -890,16 +947,12 @@ int InitializeNewBall(bool curStateChanged, int playerNum, int ballNum) {
     BSOS_SetDisableFlippers(false);
     BSOS_EnableSolenoidStack(); 
     BSOS_SetDisplayCredits(Credits, true);
-    SetCurrentPlayerLamp(playerNum);
+    SetPlayerLamps(playerNum, 4);
     
     BSOS_SetDisplayBallInPlay(ballNum);
     BSOS_SetLampState(BALL_IN_PLAY, 1);
-    BSOS_SetDisplayBIPBlank(1);
-    BSOS_SetLampState(SPECIAL_PURPLE_STAR, 0);
-    BSOS_SetLampState(SPECIAL_WHITE_STAR, 0);
-    BSOS_SetLampState(SPECIAL_GREEN_STAR, 0);
-    BSOS_SetLampState(SPECIAL_AMBER_STAR, 0);
-    BSOS_SetLampState(SPECIAL_YELLOW_STAR, 0);
+//    BSOS_SetDisplayBIPBlank(1);
+    ShowStarGoalCompleteLights(0);
     BSOS_SetLampState(TILT, 0);
   
     if (BallSaveNumSeconds>0) {
@@ -926,7 +979,6 @@ int InitializeNewBall(bool curStateChanged, int playerNum, int ballNum) {
       SetStarLampState(count, (StarHit[count][playerNum])?1:0, (StarHit[count][playerNum]==1?true:false), (StarHit[count][playerNum]==3?500:0));
     }
   
-  
     if (BSOS_ReadSingleSwitchState(SW_OUTHOLE)) {
       BSOS_PushToTimedSolenoidStack(SOL_OUTHOLE, 4, CurrentTime + 100);
     }
@@ -934,7 +986,6 @@ int InitializeNewBall(bool curStateChanged, int playerNum, int ballNum) {
     BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_RIGHT, 15, CurrentTime + 150);
 
   }
-
   
   // We should only consider the ball initialized when 
   // the ball is no longer triggering the SW_OUTHOLE
@@ -952,21 +1003,10 @@ unsigned long LastRovingStarLightReportTime = 0;
 int RovingStarPhase = 0;
 int RovingStarPeriod = 1000;
 
-void ShowStarGoalCompleteLights() {
-  BSOS_SetLampState(SPECIAL_PURPLE_STAR, 1, 0, 400);
-  BSOS_SetLampState(SPECIAL_WHITE_STAR, 1, 0, 450);
-  BSOS_SetLampState(SPECIAL_GREEN_STAR, 1, 0, 500);
-  BSOS_SetLampState(SPECIAL_AMBER_STAR, 1, 0, 550);
-  BSOS_SetLampState(SPECIAL_YELLOW_STAR, 1, 0, 600);
-}
 
 void ShowRovingStarLight() {
   if (RovingStarLight==0) {
-    BSOS_SetLampState(SPECIAL_PURPLE_STAR, 0);
-    BSOS_SetLampState(SPECIAL_WHITE_STAR, 0);
-    BSOS_SetLampState(SPECIAL_GREEN_STAR, 0);
-    BSOS_SetLampState(SPECIAL_AMBER_STAR, 0);
-    BSOS_SetLampState(SPECIAL_YELLOW_STAR, 0);
+    ShowStarGoalCompleteLights(0);
     return;
   }
 
@@ -1000,23 +1040,6 @@ boolean CheckForRovingStarHit(int starNum) {
 }
 
 
-void SetBonusIndicator(byte number, byte state, byte dim, int flashPeriod=0) {
-  if (number==0 || number>10) return;
-  switch (number) {
-    case 1: BSOS_SetLampState(D1K_BONUS, state, dim, flashPeriod); break;
-    case 2: BSOS_SetLampState(D2K_BONUS, state, dim, flashPeriod); break;
-    case 3: BSOS_SetLampState(D3K_BONUS, state, dim, flashPeriod); break;
-    case 4: BSOS_SetLampState(D4K_BONUS, state, dim, flashPeriod); break;
-    case 5: BSOS_SetLampState(D5K_BONUS, state, dim, flashPeriod); break;
-    case 6: BSOS_SetLampState(D6K_BONUS, state, dim, flashPeriod); break;
-    case 7: BSOS_SetLampState(D7K_BONUS, state, dim, flashPeriod); break;
-    case 8: BSOS_SetLampState(D8K_BONUS, state, dim, flashPeriod); break;
-    case 9: BSOS_SetLampState(D9K_BONUS, state, dim, flashPeriod); break;
-    case 10: BSOS_SetLampState(D10K_BONUS, state, dim, flashPeriod); break;
-  }
-
-}
-
 void ShowBonusOnLadder(byte bonus) {
   if (bonus>MAX_DISPLAY_BONUS) bonus = MAX_DISPLAY_BONUS;
   byte cap = 10;
@@ -1042,67 +1065,6 @@ void ShowBonusOnLadder(byte bonus) {
 }
 
 
-void SetNumPlayersLamp(byte numPlayers) {
-    switch(numPlayers) {
-    case 1:
-      BSOS_SetLampState(PLAYER_1, 1);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 0);
-      break;
-    case 2:
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 1);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 0);
-      break;
-    case 3:
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 1);
-      BSOS_SetLampState(PLAYER_4, 0);
-      break;
-    case 4:
-      BSOS_SetLampState(PLAYER_1, 0);
-      BSOS_SetLampState(PLAYER_2, 0);
-      BSOS_SetLampState(PLAYER_3, 0);
-      BSOS_SetLampState(PLAYER_4, 1);
-      break;
-  }  
-}
-
-
-void SetCurrentPlayerLamp(byte playerToShow) {
-
-  switch(playerToShow) {
-    case 0:
-      BSOS_SetLampState(PLAYER_1_UP, 1);
-      BSOS_SetLampState(PLAYER_2_UP, 0);
-      BSOS_SetLampState(PLAYER_3_UP, 0);
-      BSOS_SetLampState(PLAYER_4_UP, 0);
-      break;
-    case 1:
-      BSOS_SetLampState(PLAYER_1_UP, 0);
-      BSOS_SetLampState(PLAYER_2_UP, 1);
-      BSOS_SetLampState(PLAYER_3_UP, 0);
-      BSOS_SetLampState(PLAYER_4_UP, 0);
-      break;
-    case 2:
-      BSOS_SetLampState(PLAYER_1_UP, 0);
-      BSOS_SetLampState(PLAYER_2_UP, 0);
-      BSOS_SetLampState(PLAYER_3_UP, 1);
-      BSOS_SetLampState(PLAYER_4_UP, 0);
-      break;
-    case 3:
-      BSOS_SetLampState(PLAYER_1_UP, 0);
-      BSOS_SetLampState(PLAYER_2_UP, 0);
-      BSOS_SetLampState(PLAYER_3_UP, 0);
-      BSOS_SetLampState(PLAYER_4_UP, 1);
-      break;
-  }
-}
-
-
 boolean AddPlayer() {
 
   if (Credits<1 && !FreePlayMode) return false;
@@ -1118,7 +1080,7 @@ boolean AddPlayer() {
     BSOS_SetDisplayCredits(Credits);
   }
   PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1+(CurrentNumPlayers-1));
-  SetNumPlayersLamp(CurrentNumPlayers);
+  SetPlayerLamps(CurrentNumPlayers);
 
   BSOS_WriteULToEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE) + 1);
 
@@ -1145,22 +1107,12 @@ int NormalGamePlay() {
       BSOS_SetDisplayFlash(CurrentPlayer, CurrentTime, 500, (CurrentScores[CurrentPlayer]==0)?99:CurrentScores[CurrentPlayer]);
     }
     if (!PlayerUpLightBlinking) {
-      switch(CurrentPlayer) {
-        case 0: BSOS_SetLampState(PLAYER_1_UP, 1, 0, 500); break;
-        case 1: BSOS_SetLampState(PLAYER_2_UP, 1, 0, 500); break;
-        case 2: BSOS_SetLampState(PLAYER_3_UP, 1, 0, 500); break;
-        case 3: BSOS_SetLampState(PLAYER_4_UP, 1, 0, 500); break;
-      }
+      SetPlayerLamps((CurrentPlayer+1), 4, 500);
       PlayerUpLightBlinking = true;
     }
   } else {
     if (PlayerUpLightBlinking) {
-      switch(CurrentPlayer) {
-        case 0: BSOS_SetLampState(PLAYER_1_UP, 1); break;
-        case 1: BSOS_SetLampState(PLAYER_2_UP, 1); break;
-        case 2: BSOS_SetLampState(PLAYER_3_UP, 1); break;
-        case 3: BSOS_SetLampState(PLAYER_4_UP, 1); break;
-      }
+      SetPlayerLamps((CurrentPlayer+1), 4);
       PlayerUpLightBlinking = false;
     }
   }
@@ -1205,14 +1157,10 @@ int NormalGamePlay() {
         case 8:
         case 7:
         case 6:
-          BSOS_SetLampState(SHOOT_AGAIN, (tenthsLeft/5)%2);
-          break;
         case 5:
           BSOS_SetLampState(SHOOT_AGAIN, (tenthsLeft/5)%2);
           break;
         case 4:
-          BSOS_SetLampState(SHOOT_AGAIN, (tenthsLeft/4)%2);
-          break;
         case 3:
           BSOS_SetLampState(SHOOT_AGAIN, (tenthsLeft/4)%2);
           break;
@@ -1227,8 +1175,7 @@ int NormalGamePlay() {
 //      BSOS_SetDisplayFlashCredits(CurrentTime, 250);      
     }
   } else if (CurrentlyShowingBallSave) {
-    if (SamePlayerShootsAgain) BSOS_SetLampState(SHOOT_AGAIN, 1);
-    else BSOS_SetLampState(SHOOT_AGAIN, 0);
+    BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
     BSOS_SetDisplayCredits(Credits, true);
     CurrentlyShowingBallSave = false;
     LastReportedValue = 0;
@@ -1244,7 +1191,7 @@ int NormalGamePlay() {
       ShowRovingStarLight();
     }
     SkillShotRunning = false;
-    if (StarGoalComplete[CurrentPlayer]) ShowStarGoalCompleteLights();
+    if (StarGoalComplete[CurrentPlayer]) ShowStarGoalCompleteLights(1);
   }
 
   if (StarLevelUpMode) {
@@ -1259,6 +1206,7 @@ int NormalGamePlay() {
       BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_LEFT, 15, CurrentTime+130);
       BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_RIGHT, 15, CurrentTime);
       Spinner400Bonus = 0; 
+      SetDropTargetRelatedLights(BonusX[CurrentPlayer]);
     }
   }
 
@@ -1295,7 +1243,6 @@ int NormalGamePlay() {
     BallTimeInTrough = 0;
   }
   
-  BSOS_ApplyFlashToLamps(CurrentTime);
 
 
   // Check for Wizard Mode
@@ -1334,46 +1281,6 @@ byte GetNextStarLevel(int starNum, int CurrentPlayer) {
   return 3;
 }
 
-void SetLeftSpinnerLights(int bonusX) {
-
-  if (bonusX<6) {
-    if (DropTargetSpinnerGoal && ((CurrentTime-DropTargetSpinnerGoal)/1000)<DROP_TARGET_GOAL_TIME) {
-      int lightSweep = ((CurrentTime-DropTargetSpinnerGoal)/250)%3;
-      BSOS_SetLampState(SPECIAL_FEATURE, (lightSweep==0)?1:0);
-      BSOS_SetLampState(D400_1_SPINNER, (lightSweep==2)?1:0);
-      BSOS_SetLampState(D400_2_SPINNER, (lightSweep==1)?1:0);    
-    } else {
-      BSOS_SetLampState(D400_1_SPINNER, (Spinner400Bonus>0)?1:0);
-      BSOS_SetLampState(D400_2_SPINNER, (Spinner400Bonus>1)?1:0);    
-    }
-  } else {
-    BSOS_SetLampState(D400_1_SPINNER, (Spinner400Bonus>0)?1:0);
-    BSOS_SetLampState(D400_2_SPINNER, (Spinner400Bonus>1)?1:0);    
-  }
-}
-
-void SetDropTargetRelatedLights(int bonusX) {
-
-  // Lights at bottom of playfield
-  BSOS_SetLampState(DOUBLE_BONUS, (bonusX==2)?1:0);  
-  BSOS_SetLampState(TRIPLE_BONUS, (bonusX>2)?1:0);
-
-  if (BallSaveNumSeconds==0 || (BallFirstSwitchHitTime>0 && ((CurrentTime-BallFirstSwitchHitTime)/1000)>BallSaveNumSeconds)) {
-    // Only set this lamp here, if there's no ballsave or
-    // the playfield is validated & the ballsave is expired
-    BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
-  }
-
-  // Lights indicating next award
-  BSOS_SetLampState(DOUBLE_BONUS_FEATURE, (bonusX==1)?1:0);
-  BSOS_SetLampState(TRIPLE_BONUS_FEATURE, (bonusX==2)?1:0);
-  BSOS_SetLampState(WOW, (bonusX==3)?1:0);  
-  BSOS_SetLampState(SPECIAL_FEATURE, (bonusX>3)?1:0, (bonusX==4)?1:0, (bonusX>5)?500:0);  
-
-  BSOS_SetLampState(D7000_LEFT, Left7kLight);
-  BSOS_SetLampState(D7000_RIGHT, Right7kLight);
-  SetLeftSpinnerLights(bonusX);
-}
 
 
 boolean WaitForDropTargetsToReset = false;
@@ -1450,8 +1357,13 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
         if (BonusX[curPlayer]<5) BonusX[curPlayer] += 1;
         
         if (BonusX[curPlayer]==4) {
-          if (WowExtraBall) SamePlayerShootsAgain = true;
-          else CurrentScores[curPlayer] += 25000;
+          if (WowExtraBall) {
+            SamePlayerShootsAgain = true;
+            BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
+          } else {
+            CurrentScores[curPlayer] += 25000;
+          }
+          
           PlaySoundEffect(SOUND_EFFECT_EXTRA_BALL);
         }
       }
@@ -1477,8 +1389,12 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
         if (BonusX[curPlayer]<5) BonusX[curPlayer] += 1;
   
         if (BonusX[curPlayer]==4) {
-          if (WowExtraBall) SamePlayerShootsAgain = true;
-          else CurrentScores[curPlayer] += 25000;
+          if (WowExtraBall) {
+            SamePlayerShootsAgain = true;
+            BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
+          } else {
+            CurrentScores[curPlayer] += 25000;
+          }
           PlaySoundEffect(SOUND_EFFECT_EXTRA_BALL);
         }      
       }
@@ -1705,7 +1621,7 @@ void HandleStarHit(byte switchNum) {
       StarLevelValidated[StarHit[0][CurrentPlayer]-1][CurrentPlayer] = true;
       if (StarHit[0][CurrentPlayer]==3) {
         StarGoalComplete[CurrentPlayer] = true;
-        ShowStarGoalCompleteLights();
+        ShowStarGoalCompleteLights(1);
       }
     } else {
       PlaySoundEffect(SOUND_EFFECT_MISSED_STAR_LEVEL_UP);
@@ -1838,11 +1754,7 @@ int WizardMode() {
     BumperHits[CurrentPlayer] = 0;
 
     // Put star lights and inlane lights back to normal
-    BSOS_SetLampState(SPECIAL_PURPLE_STAR, 0);
-    BSOS_SetLampState(SPECIAL_WHITE_STAR, 0);
-    BSOS_SetLampState(SPECIAL_GREEN_STAR, 0);
-    BSOS_SetLampState(SPECIAL_AMBER_STAR, 0);
-    BSOS_SetLampState(SPECIAL_YELLOW_STAR, 0);
+    ShowStarGoalCompleteLights(0);
     BSOS_SetLampState(STAR_WHITE, 0);
     BSOS_SetLampState(STAR_GREEN, 0);
     BSOS_SetLampState(STAR_AMBER, 0);
@@ -1964,10 +1876,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
       if (CurrentBallInPlay>BallsPerGame) {
         CheckHighScores();
         PlaySoundEffect(SOUND_EFFECT_GAME_OVER);
-        BSOS_SetLampState(PLAYER_1, 0);
-        BSOS_SetLampState(PLAYER_2, 0);
-        BSOS_SetLampState(PLAYER_3, 0);
-        BSOS_SetLampState(PLAYER_4, 0);
+        SetPlayerLamps(0);
         for (int count=0; count<CurrentNumPlayers; count++) {
           BSOS_SetDisplay(count, CurrentScores[count]);
           BSOS_SetDisplayBlankByMagnitude(count, CurrentScores[count], 2);
@@ -1990,7 +1899,6 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     !BSOS_ReadSingleSwitchState(SW_DROP_TARGET_6)  ) {
     WaitForDropTargetsToReset = false;    
   }
-
 
 
   byte switchHit;
@@ -2210,6 +2118,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           BSOS_WriteULToEEProm(BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE) + 1);
         } else {
           SamePlayerShootsAgain = true;
+          BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
           PlaySoundEffect(SOUND_EFFECT_EXTRA_BALL);
         }
       }
@@ -2225,7 +2134,6 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     if (CurrentScores[CurrentPlayer]>999999) ScrollScore(CurrentScores[CurrentPlayer], CurrentPlayer);
   }
 
-  BSOS_ApplyFlashToLamps(CurrentTime);
 
   return returnState;
 }
@@ -2253,6 +2161,7 @@ void loop() {
     MachineStateChanged = false;
   }
 
+  BSOS_ApplyFlashToLamps(CurrentTime);
   BSOS_UpdateTimedSolenoidStack(CurrentTime);
 
 }

@@ -96,7 +96,6 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
       BSOS_SetDisplay(0, curLamp);  
       BSOS_SetDisplayBlankByMagnitude(0, curLamp);      
     }    
-    BSOS_ApplyFlashToLamps(CurrentTime);
   } else if (curState==MACHINE_STATE_TEST_DISPLAYS) {
     if (curStateChanged) {
       BSOS_TurnOffAllLamps();
