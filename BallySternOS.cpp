@@ -441,13 +441,19 @@ void InterruptService2() {
         if (displayCount<4) {
           displayDataByte &= ~(0x01<<displayCount);
         }
+        // Write out the digit & strobe (if it's 0-3)
         BSOS_DataWrite(ADDRESS_U10_A, displayDataByte);
-        if (displayCount==4) {
-            
+        if (displayCount==4) {            
           // Strobe #5 latch on U11A:b0
           BSOS_DataWrite(ADDRESS_U11_A, BSOS_DataRead(ADDRESS_U11_A) & 0xFE);
         }
-        
+
+        // Need to delay a little to make sure the strobe is low for long enough
+        WaitOneClockCycle();
+        WaitOneClockCycle();
+        WaitOneClockCycle();
+        WaitOneClockCycle();
+
         // Put the latch strobe bits back high
         if (displayCount<4) {
           displayDataByte |= 0x0F;

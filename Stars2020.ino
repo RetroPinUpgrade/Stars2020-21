@@ -8,7 +8,7 @@
 
 //wavTrigger wTrig;             // Our WAV Trigger object
 
-#define DEBUG_MESSAGES  1
+#define DEBUG_MESSAGES  0
 
 /*********************************************************************
 *
@@ -101,8 +101,8 @@ byte CurrentPlayer = 0;
 byte CurrentBallInPlay = 1;
 byte CurrentNumPlayers = 0;
 unsigned long CurrentScores[4];
-byte Bonus[4];
-byte BonusX[4];
+byte Bonus;
+byte BonusX;
 byte StarHit[5][4];
 boolean StarLevelValidated[5][4];
 boolean StarGoalComplete[4];
@@ -373,6 +373,28 @@ void SetBonusIndicator(byte number, byte state, byte dim, int flashPeriod=0) {
 
 
 
+boolean AddPlayer(boolean resetNumPlayers=false) {
+
+  if (Credits<1 && !FreePlayMode) return false;
+  if (CurrentNumPlayers>=4 || (CurrentNumPlayers>=2 && !MaximumNumber4Players)) return false;
+
+  if (resetNumPlayers) CurrentNumPlayers = 0;
+  CurrentNumPlayers += 1;
+  BSOS_SetDisplay(CurrentNumPlayers-1, 0);
+  BSOS_SetDisplayBlank(CurrentNumPlayers-1, 0x30);
+
+  if (!FreePlayMode) {
+    Credits -= 1;
+    BSOS_WriteCreditsToEEProm(Credits);
+    BSOS_SetDisplayCredits(Credits);
+  }
+  PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1+(CurrentNumPlayers-1));
+  SetPlayerLamps(CurrentNumPlayers);
+
+  BSOS_WriteULToEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE) + 1);
+
+  return true;
+}
 
 
 void AddCoinToAudit(byte switchHit) {
@@ -682,8 +704,7 @@ int RunAttractMode(int curState, boolean curStateChanged) {
   byte switchHit;
   while ( (switchHit=BSOS_PullFirstFromSwitchStack())!=SWITCH_STACK_EMPTY ) {
     if (switchHit==SW_CREDIT_RESET) {
-      CurrentNumPlayers = 0;
-      if (AddPlayer()) returnState = MACHINE_STATE_INIT_GAMEPLAY;
+      if (AddPlayer(true)) returnState = MACHINE_STATE_INIT_GAMEPLAY;
     }
     if (switchHit==SW_COIN_1 || switchHit==SW_COIN_2 || switchHit==SW_COIN_3) {
       AddCoinToAudit(switchHit);
@@ -908,8 +929,6 @@ int InitializeGamePlay() {
 
     CurrentScores[count] = 0;
 
-    Bonus[count] = 0;
-    BonusX[count] = 1;
     for (int starCount=0; starCount<5; starCount++) {
       StarHit[starCount][count] = 0;
     }
@@ -961,10 +980,10 @@ int InitializeNewBall(bool curStateChanged, byte playerNum, int ballNum) {
     
     Left7kLight = false;
     Right7kLight = false;
-    Bonus[playerNum] = 0;
-    BonusX[playerNum] = 1;
+    Bonus = 0;
+    BonusX = 1;
     Spinner400Bonus = 0;
-    SetDropTargetRelatedLights(BonusX[playerNum]);
+    SetDropTargetRelatedLights(BonusX);
     DropTargetSpinnerGoal = 0;
     FlipInOutLanesLights();
     BallSaveUsed = false;
@@ -1065,28 +1084,10 @@ void ShowBonusOnLadder(byte bonus) {
 }
 
 
-boolean AddPlayer() {
-
-  if (Credits<1 && !FreePlayMode) return false;
-  if (CurrentNumPlayers>=4 || (CurrentNumPlayers>=2 && !MaximumNumber4Players)) return false;
-
-  CurrentNumPlayers += 1;
-  BSOS_SetDisplay(CurrentNumPlayers-1, 0);
-  BSOS_SetDisplayBlank(CurrentNumPlayers-1, 0x30);
-
-  if (!FreePlayMode) {
-    Credits -= 1;
-    BSOS_WriteCreditsToEEProm(Credits);
-    BSOS_SetDisplayCredits(Credits);
-  }
-  PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1+(CurrentNumPlayers-1));
-  SetPlayerLamps(CurrentNumPlayers);
-
-  BSOS_WriteULToEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE) + 1);
-
-  return true;
+void AddToBonus(byte bonusAddition) {
+  Bonus += bonusAddition;
+  if (Bonus>MAX_BONUS) Bonus = MAX_BONUS;
 }
-
 
 
 int LastReportedValue = 0;
@@ -1200,13 +1201,13 @@ int NormalGamePlay() {
 
   // Drop target completion goal
   if (DropTargetSpinnerGoal) {
-    SetLeftSpinnerLights(BonusX[CurrentPlayer]);
+    SetLeftSpinnerLights(BonusX);
     if (((CurrentTime-DropTargetSpinnerGoal)/1000)>DROP_TARGET_GOAL_TIME) {
       DropTargetSpinnerGoal = 0;
       BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_LEFT, 15, CurrentTime+130);
       BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_RIGHT, 15, CurrentTime);
       Spinner400Bonus = 0; 
-      SetDropTargetRelatedLights(BonusX[CurrentPlayer]);
+      SetDropTargetRelatedLights(BonusX);
     }
   }
 
@@ -1247,7 +1248,7 @@ int NormalGamePlay() {
 
   // Check for Wizard Mode
   if (  BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_FLASH && 
-        BonusX[CurrentPlayer]==6 &&
+        BonusX==6 &&
         StarGoalComplete[CurrentPlayer] ) {
     WizardModeStartTime = CurrentTime;
     returnState = MACHINE_STATE_WIZARD_MODE;
@@ -1288,7 +1289,7 @@ boolean WaitForDropTargetsToReset = false;
 void HandleDropTargetHit(int switchHit, int curPlayer) {
   boolean requireBothSetsOfDrops = false;
 
-  if (BonusX[curPlayer]>2 || (BonusX[curPlayer]==2 && BothTargetSetsFor3X)) requireBothSetsOfDrops = true;
+  if (BonusX>2 || (BonusX==2 && BothTargetSetsFor3X)) requireBothSetsOfDrops = true;
     
   CurrentScores[CurrentPlayer] += 500;
 
@@ -1343,7 +1344,7 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
             BSOS_ReadSingleSwitchState(SW_DROP_TARGET_5) && 
             BSOS_ReadSingleSwitchState(SW_DROP_TARGET_6)  ) {
 
-        if (BonusX[curPlayer]==5) {
+        if (BonusX==5) {
           DropTargetSpinnerGoal = CurrentTime;
         } else {
           BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_LEFT, 15, CurrentTime);
@@ -1354,9 +1355,9 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
         Right7kLight = false;
         Left7kLight = false;
 
-        if (BonusX[curPlayer]<5) BonusX[curPlayer] += 1;
+        if (BonusX<5) BonusX += 1;
         
-        if (BonusX[curPlayer]==4) {
+        if (BonusX==4) {
           if (WowExtraBall) {
             SamePlayerShootsAgain = true;
             BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
@@ -1375,7 +1376,7 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
               BSOS_ReadSingleSwitchState(SW_DROP_TARGET_5) && 
               BSOS_ReadSingleSwitchState(SW_DROP_TARGET_6) ) ) {
 
-        if (BonusX[curPlayer]==5) {
+        if (BonusX==5) {
           DropTargetSpinnerGoal = CurrentTime;
         } else {
           BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_LEFT, 15, CurrentTime+130);
@@ -1386,9 +1387,9 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
         Right7kLight = false;
         Left7kLight = false;
 
-        if (BonusX[curPlayer]<5) BonusX[curPlayer] += 1;
+        if (BonusX<5) BonusX += 1;
   
-        if (BonusX[curPlayer]==4) {
+        if (BonusX==4) {
           if (WowExtraBall) {
             SamePlayerShootsAgain = true;
             BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
@@ -1401,7 +1402,7 @@ void HandleDropTargetHit(int switchHit, int curPlayer) {
     }
   }
   
-  SetDropTargetRelatedLights(BonusX[curPlayer]);
+  SetDropTargetRelatedLights(BonusX);
 
 }
 
@@ -1414,10 +1415,10 @@ int CountdownBonus(boolean curStateChanged) {
 
   // If this is the first time through the countdown loop
   if (curStateChanged) {
-    BSOS_SetLampState(BALL_IN_PLAY, 0);
+    BSOS_SetLampState(BALL_IN_PLAY, 1, 0, 250);
 
     CountdownStartTime = CurrentTime;
-    ShowBonusOnLadder(Bonus[CurrentPlayer]);
+    ShowBonusOnLadder(Bonus);
     
     LastCountdownReportTime = CountdownStartTime;
     BonusCountDownEndTime = 0xFFFFFFFF;
@@ -1425,24 +1426,24 @@ int CountdownBonus(boolean curStateChanged) {
 
   if ((CurrentTime-LastCountdownReportTime)>300) {
     
-    if (Bonus[CurrentPlayer]>0) {
+    if (Bonus>0) {
 
       // Only give sound & score if this isn't a tilt
       if (NumTiltWarnings<=MaxTiltWarnings) {
-        if (BonusX[CurrentPlayer]==1) {
+        if (BonusX==1) {
           PlaySoundEffect(SOUND_EFFECT_BONUS_COUNT);
           CurrentScores[CurrentPlayer] += 1000;
-        } else if (BonusX[CurrentPlayer]==2) {
+        } else if (BonusX==2) {
           PlaySoundEffect(SOUND_EFFECT_2X_BONUS_COUNT);
           CurrentScores[CurrentPlayer] += 2000;
-        } else if (BonusX[CurrentPlayer]>2) {
+        } else if (BonusX>2) {
           PlaySoundEffect(SOUND_EFFECT_3X_BONUS_COUNT);
           CurrentScores[CurrentPlayer] += 3000;
         }
       }
       
-      Bonus[CurrentPlayer] -= 1;
-      ShowBonusOnLadder(Bonus[CurrentPlayer]);
+      Bonus -= 1;
+      ShowBonusOnLadder(Bonus);
     } else if (BonusCountDownEndTime==0xFFFFFFFF) {
       PlaySoundEffect(SOUND_EFFECT_BALL_OVER);
       BSOS_SetLampState(D1K_BONUS, 0);
@@ -1578,16 +1579,13 @@ void HandleStarHit(byte switchNum) {
       ShowRovingStarLight();
       CurrentScores[CurrentPlayer] += 25000;
       PlaySoundEffect(SOUND_EFFECT_SKILL_SHOT);
-      Bonus[CurrentPlayer] += 1;
-      if (Bonus[CurrentPlayer]>MAX_BONUS) Bonus[CurrentPlayer] = MAX_BONUS;
       if (SkillShotAwardsLevel) triggerAllStars = true;
     } else {
       PlaySoundEffect(SOUND_EFFECT_STAR_REWARD);
       CurrentScores[CurrentPlayer] += 400 + 100*((unsigned long)nextStarLevel);
-      Bonus[CurrentPlayer] += 1;
-      if (Bonus[CurrentPlayer]>MAX_BONUS) Bonus[CurrentPlayer] = MAX_BONUS;
     }
   
+    AddToBonus(1);
     nextStarLevel = GetNextStarLevel(starID, CurrentPlayer);
     StarHit[starID][CurrentPlayer] = nextStarLevel;
     SetStarLampState(starID, 1, (nextStarLevel==1?true:false), (nextStarLevel==3?500:0));
@@ -1784,6 +1782,7 @@ int ShowMatchSequence(boolean curStateChanged) {
     BSOS_SetLampState(MATCH, 1, 0);
     BSOS_SetDisableFlippers();
     ScoreMatches = 0;
+    BSOS_SetLampState(BALL_IN_PLAY, 0);
   }
 
   if (NumMatchSpins<40) {
@@ -1849,7 +1848,7 @@ int ShowMatchSequence(boolean curStateChanged) {
 
 int RunGamePlayMode(int curState, boolean curStateChanged) {
   int returnState = curState;
-  byte bonusAtTop = Bonus[CurrentPlayer];
+  byte bonusAtTop = Bonus;
   unsigned long scoreAtTop = CurrentScores[CurrentPlayer];
 
   // Very first time into gameplay loop
@@ -1917,7 +1916,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           break;
         case SW_TILT:
           // This should be debounced
-          if (CurrentTime-LastTiltWarningTime > TILT_WARNING_DEBOUNCE_TIME) {
+          if ((CurrentTime-LastTiltWarningTime) > TILT_WARNING_DEBOUNCE_TIME) {
             LastTiltWarningTime = CurrentTime;
             NumTiltWarnings += 1;
             if (NumTiltWarnings>MaxTiltWarnings) {
@@ -1937,8 +1936,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_RIGHT_INLANE:
           if (curState!=MACHINE_STATE_WIZARD_MODE) {
             if (InlanesLit[CurrentPlayer]) {
-              Bonus[CurrentPlayer] += 3;
-              if (Bonus[CurrentPlayer]>MAX_BONUS) Bonus[CurrentPlayer] = MAX_BONUS;
+              AddToBonus(3);
               CurrentScores[CurrentPlayer] += 3000;
               PlaySoundEffect(SOUND_EFFECT_INLANE_LIT);
             } else {
@@ -1955,8 +1953,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_RIGHT_OUTLANE:
           if (curState!=MACHINE_STATE_WIZARD_MODE) {
             if (OutlanesLit[CurrentPlayer]) {
-              Bonus[CurrentPlayer] += 3;
-              if (Bonus[CurrentPlayer]>MAX_BONUS) Bonus[CurrentPlayer] = MAX_BONUS;
+              AddToBonus(3);
               CurrentScores[CurrentPlayer] += 3000;
               PlaySoundEffect(SOUND_EFFECT_OUTLANE_LIT);
             } else {
@@ -2001,10 +1998,10 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_LEFT_SPINNER:
           CurrentScores[CurrentPlayer] += (200 + ((unsigned long)Spinner400Bonus)*400);
           if (BallFirstSwitchHitTime==0) BallFirstSwitchHitTime = CurrentTime;
-          if (DropTargetSpinnerGoal && ((CurrentTime-DropTargetSpinnerGoal)/1000)<DROP_TARGET_GOAL_TIME && BonusX[CurrentPlayer]!=6) {
-            BonusX[CurrentPlayer] = 6;
+          if (DropTargetSpinnerGoal && ((CurrentTime-DropTargetSpinnerGoal)/1000)<DROP_TARGET_GOAL_TIME && BonusX!=6) {
+            BonusX = 6;
             DropTargetSpinnerGoal = 0;
-            SetDropTargetRelatedLights(BonusX[CurrentPlayer]);
+            SetDropTargetRelatedLights(BonusX);
             BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_LEFT, 15, CurrentTime);
             BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_RIGHT, 15, CurrentTime+130);
             Spinner400Bonus = 0;
@@ -2014,8 +2011,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           if (curState!=MACHINE_STATE_WIZARD_MODE) {
             CurrentScores[CurrentPlayer] += 500;
             if (RolloverLit) {
-              Bonus[CurrentPlayer] += 1;
-              if (Bonus[CurrentPlayer]>MAX_BONUS) Bonus[CurrentPlayer] = MAX_BONUS;
+              AddToBonus(1);
             }
             if (BallFirstSwitchHitTime==0) BallFirstSwitchHitTime = CurrentTime;
           } else {
@@ -2076,7 +2072,14 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
             AddPlayer();
           } else {
             // If the first ball is over, pressing start again resets the game
-            returnState = MACHINE_STATE_INIT_GAMEPLAY;
+            if (Credits>=1 || FreePlayMode) {
+              if (!FreePlayMode) {
+                Credits -= 1;
+                BSOS_WriteCreditsToEEProm(Credits);
+                BSOS_SetDisplayCredits(Credits);
+              }
+              returnState = MACHINE_STATE_INIT_GAMEPLAY;
+            }
           }
           if (DEBUG_MESSAGES) {
             Serial.write("Start game button pressed\n\r");
@@ -2103,8 +2106,8 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     }
   }
   
-  if (bonusAtTop!=Bonus[CurrentPlayer]) {
-    ShowBonusOnLadder(Bonus[CurrentPlayer]);
+  if (bonusAtTop!=Bonus) {
+    ShowBonusOnLadder(Bonus);
   }
 
   if (scoreAtTop!=CurrentScores[CurrentPlayer]) {
