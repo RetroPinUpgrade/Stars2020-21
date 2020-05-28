@@ -159,6 +159,44 @@ void setup() {
   if (DEBUG_MESSAGES) {
     Serial.begin(57600);
   }
+
+  // Start out with everything tri-state, in case the original
+  // CPU is running
+  pinMode(2, INPUT);
+  pinMode(3, INPUT);
+  pinMode(4, INPUT);
+  pinMode(5, INPUT);
+  pinMode(6, INPUT);
+  pinMode(7, INPUT);
+  pinMode(8, INPUT);
+  pinMode(9, INPUT);
+  pinMode(10, INPUT);
+  pinMode(11, INPUT);
+  pinMode(12, INPUT);
+  pinMode(13, INPUT);
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(A4, INPUT);
+  pinMode(A5, INPUT);
+
+  unsigned long startTime = millis();
+  boolean sawHigh = false;
+  boolean sawLow = false;
+  // for three seconds, look for activity on the VMA line (A5)
+  // If we see anything, then the MPU is active so we shouldn't run
+  while ((millis()-startTime)<3000) {
+    if (digitalRead(A5)) sawHigh = true;
+    else sawLow = true;
+  }
+  // If we saw both a high and low signal, then someone is toggling the 
+  // VMA line, so we should hang here forever (until reset)
+  if (sawHigh && sawLow) {
+    while (1);
+  }
+
+
     
   // Tell the OS about game-specific lights and switches
   BSOS_SetupGameLights(NUM_STARS_LIGHTS, StarsLights);
@@ -273,7 +311,7 @@ void setup() {
   wTrig.stopAllTracks();
   wTrig.samplerateOffset(0);  
 */
-  
+  CurrentTime = millis();
   PlaySoundEffect(SOUND_EFFECT_MACHINE_START);
 }
 
