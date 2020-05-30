@@ -857,18 +857,16 @@ void BSOS_InitializeMPU(int clockSpeedInKHz = 500) {
   
   // Reset address bus
   BSOS_DataRead(0);
-  
-  // Hook up the interrupt
-  attachInterrupt(digitalPinToInterrupt(2), InterruptService2, LOW);
-  BSOS_DataRead(0);  // Reset address bus
 
-  // Cleary all possible interrupts by reading the registers
-  byte dataRegister;
-  dataRegister = BSOS_DataRead(ADDRESS_U11_A);
-  dataRegister = BSOS_DataRead(ADDRESS_U11_B);
-  dataRegister = BSOS_DataRead(ADDRESS_U10_A);
-  dataRegister = BSOS_DataRead(ADDRESS_U10_B);
-  BSOS_DataRead(0);  // Reset address bus
+  // Reset solenoid stack
+  SolenoidStackFirst = 0;
+  SolenoidStackLast = 0;
+
+  // Reset switch stack
+  SwitchStackFirst = 0;
+  SwitchStackLast = 0;
+
+  CurrentDisplayDigit = 0; 
 
   // Set default values for the displays
   for (int displayCount=0; displayCount<5; displayCount++) {
@@ -901,14 +899,19 @@ void BSOS_InitializeMPU(int clockSpeedInKHz = 500) {
     SwitchesMinus1[switchCount] = 0xFF;
     SwitchesNow[switchCount] = 0xFF;
   }
+  
+  // Hook up the interrupt
+  attachInterrupt(digitalPinToInterrupt(2), InterruptService2, LOW);
+  BSOS_DataRead(0);  // Reset address bus
 
-  // Reset solenoid stack
-  SolenoidStackFirst = 0;
-  SolenoidStackLast = 0;
+  // Cleary all possible interrupts by reading the registers
+  byte dataRegister;
+  dataRegister = BSOS_DataRead(ADDRESS_U11_A);
+  dataRegister = BSOS_DataRead(ADDRESS_U11_B);
+  dataRegister = BSOS_DataRead(ADDRESS_U10_A);
+  dataRegister = BSOS_DataRead(ADDRESS_U10_B);
+  BSOS_DataRead(0);  // Reset address bus
 
-  // Reset switch stack
-  SwitchStackFirst = 0;
-  SwitchStackLast = 0;
 }
 
 

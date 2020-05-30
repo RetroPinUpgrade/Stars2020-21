@@ -1847,7 +1847,7 @@ int ShowMatchSequence(boolean curStateChanged) {
         Credits+=1;
         if (Credits>MaximumCredits) Credits = MaximumCredits;
         BSOS_WriteCreditsToEEProm(Credits);
-        BSOS_WriteULToEEProm(BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE) + 3);
+        BSOS_WriteULToEEProm(BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_REPLAYS_EEPROM_START_BYTE) + 1);
         BSOS_PushToTimedSolenoidStack(SOL_KNOCKER, 3, CurrentTime, true);
         MatchDelay += 1000;
         NumMatchSpins += 1;
