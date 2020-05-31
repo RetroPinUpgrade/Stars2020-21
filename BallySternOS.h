@@ -61,6 +61,15 @@ struct PlayfieldAndCabinetSwitch {
 #define CONTSOL_DISABLE_FLIPPERS      0x40
 #define CONTSOL_DISABLE_COIN_LOCKOUT  0x20
 
+// This define needs to be set for the number of loops 
+// needed to get a delay of 80 us
+// So, set it to (0.000080) / (1/Clock Frequency)
+// Assuming Frequency = 500kHz,  40 = (0.000080) / (1/500000)
+#define BSOS_NUM_SWITCH_LOOPS 40
+// 60 us
+// So, set this to (0.000060) / (1/Clock Frequency)
+#define BSOS_NUM_LAMP_LOOPS   30
+
 #define BSOS_CREDITS_EEPROM_BYTE          5
 #define BSOS_HIGHSCORE_EEPROM_START_BYTE  1
 #define BSOS_AWARD_SCORE_1_EEPROM_START_BYTE      10
