@@ -243,56 +243,27 @@ void setup() {
   }
 
   // These settings should be setable in Self Test
-  if (EEPROM.read(EEPROM_FREE_PLAY_BYTE)==0xFF) {
-    EEPROM.write(EEPROM_FREE_PLAY_BYTE, 0);
-  }
+  ReadSetting(EEPROM_FREE_PLAY_BYTE, 0);
   FreePlayMode = (EEPROM.read(EEPROM_FREE_PLAY_BYTE)) ? true : false;
   
-  BallSaveNumSeconds = EEPROM.read(EEPROM_BALL_SAVE_BYTE);
-  if (BallSaveNumSeconds==0xFF) {
-    BallSaveNumSeconds = 16;
-    EEPROM.write(EEPROM_BALL_SAVE_BYTE, BallSaveNumSeconds);
-  }
+  BallSaveNumSeconds = ReadSetting(EEPROM_BALL_SAVE_BYTE, 16);
   BallSaveUsed = false;
+  
+  MaxTiltWarnings = ReadSetting(EEPROM_TILT_WARNING_BYTE, 2);
+  
+  MusicLevel = ReadSetting(EEPROM_MUSIC_LEVEL_BYTE, 2);
 
-  MaxTiltWarnings = EEPROM.read(EEPROM_TILT_WARNING_BYTE);
-  if (MaxTiltWarnings==0xFF) {
-    MaxTiltWarnings = 2;
-    EEPROM.write(EEPROM_TILT_WARNING_BYTE, MaxTiltWarnings);
-  }
-
-  MusicLevel = EEPROM.read(EEPROM_MUSIC_LEVEL_BYTE);
-  if (MusicLevel==0xFF) {
-    MusicLevel = 2;
-    EEPROM.write(EEPROM_MUSIC_LEVEL_BYTE, MusicLevel);
-  }
-
-  byte AwardOverride = EEPROM.read(EEPROM_AWARD_OVERRIDE_BYTE);
-  if (AwardOverride==0xFF) {
-    EEPROM.write(EEPROM_AWARD_OVERRIDE_BYTE, 99);
-    AwardOverride = 99;
-  }
-
+  byte AwardOverride = ReadSetting(EEPROM_AWARD_OVERRIDE_BYTE, 99);
   if (AwardOverride!=99) {
     ScoreAwardReplay = AwardOverride;
   }
 
-  byte BallsOverride = EEPROM.read(EEPROM_BALLS_OVERRIDE_BYTE);
-  if (BallsOverride==0xFF) {
-    EEPROM.write(EEPROM_BALLS_OVERRIDE_BYTE, 99);
-    BallsOverride = 99;
-  }
-
+  byte BallsOverride = ReadSetting(EEPROM_BALLS_OVERRIDE_BYTE, 99);
   if (BallsOverride!=99) {
     BallsPerGame = BallsOverride;
   }
 
-  SkillShotAwardsLevel = EEPROM.read(EEPROM_SKILL_SHOT_BYTE);
-  if (SkillShotAwardsLevel==0xFF) {
-    EEPROM.write(EEPROM_SKILL_SHOT_BYTE, 0);
-    SkillShotAwardsLevel = 0;
-  }
-
+  SkillShotAwardsLevel = ReadSetting(EEPROM_SKILL_SHOT_BYTE, 0);
   AwardScores[0] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_1_EEPROM_START_BYTE);
   AwardScores[1] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_2_EEPROM_START_BYTE);
   AwardScores[2] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_3_EEPROM_START_BYTE);
@@ -315,7 +286,14 @@ void setup() {
   PlaySoundEffect(SOUND_EFFECT_MACHINE_START);
 }
 
-
+byte ReadSetting(byte setting, byte defaultValue) {
+    byte value = EEPROM.read(setting);
+    if (value == 0xFF) {
+        EEPROM.write(setting, defaultValue);
+        return defaultValue;
+    }
+    return value;
+}
 
 ////////////////////////////////////////////////////////////////////////////
 //
