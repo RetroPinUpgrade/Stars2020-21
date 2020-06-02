@@ -86,7 +86,7 @@ struct PlayfieldAndCabinetSwitch {
 // Function Prototypes
 
 //   Initialization
-void BSOS_InitializeMPU(int clockSpeedInKHz = 500);
+void BSOS_InitializeMPU(); // This function used to take clock speed as a parameter - now delays are in defines at the top of this file
 void BSOS_SetupGameSwitches(int s_numSwitches, int s_numPrioritySwitches, PlayfieldAndCabinetSwitch *s_gameSwitchArray);
 void BSOS_SetupGameLights(int s_numLights, PlayfieldLight *s_gameLightArray);
 byte BSOS_GetDipSwitches(byte index);

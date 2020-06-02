@@ -107,6 +107,9 @@ byte StarHit[5][4];
 boolean StarLevelValidated[5][4];
 boolean StarGoalComplete[4];
 int BumperHits[4];
+// Future refactoring idea - Inlanes & Outlanes don't
+// need to be preserved for each player, they can be
+// calculated based on BumperHits at the start of a ball
 boolean InlanesLit[4];
 boolean OutlanesLit[4];
 boolean SamePlayerShootsAgain = false;
@@ -259,8 +262,10 @@ void setup() {
   }
 
   byte BallsOverride = ReadSetting(EEPROM_BALLS_OVERRIDE_BYTE, 99);
-  if (BallsOverride!=99) {
+  if (BallsOverride==3 || BallsOverride==5) {
     BallsPerGame = BallsOverride;
+  } else {
+    if (BallsOverride!=99) EEPROM.write(EEPROM_BALLS_OVERRIDE_BYTE, 99);
   }
 
   SkillShotAwardsLevel = ReadSetting(EEPROM_SKILL_SHOT_BYTE, 0);
@@ -403,6 +408,7 @@ boolean AddPlayer(boolean resetNumPlayers=false) {
     Credits -= 1;
     BSOS_WriteCreditsToEEProm(Credits);
     BSOS_SetDisplayCredits(Credits);
+    BSOS_SetCoinLockout(false);
   }
   PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1+(CurrentNumPlayers-1));
   SetPlayerLamps(CurrentNumPlayers);
@@ -561,6 +567,7 @@ int RunSelfTest(int curState, boolean curStateChanged) {
       if (BallsPerGame==99) {
         BallsPerGame = (dipBank0&40)?5:3;        
       }
+      if (Credits==MaximumCredits) BSOS_SetCoinLockout(true);
       returnState = MACHINE_STATE_ATTRACT;
     }
   }
@@ -921,7 +928,6 @@ void PlaySoundEffect(byte soundEffectNum) {
 
 
 int InitializeGamePlay() {
-  int returnSTate = MACHINE_STATE_INIT_GAMEPLAY;
 
   if (DEBUG_MESSAGES) {
     Serial.write("Starting game\n\r");
@@ -1045,7 +1051,7 @@ void ShowRovingStarLight() {
     return;
   }
 
-  if ((CurrentTime-LastRovingStarLightReportTime)>(RovingStarPeriod/5)) {
+  if ((CurrentTime-LastRovingStarLightReportTime)>(unsigned long)(RovingStarPeriod/5)) {
     int rovingStarLampNum = 0;
     switch (RovingStarLight) {
       case 1: rovingStarLampNum = SPECIAL_PURPLE_STAR; break;
@@ -1282,7 +1288,7 @@ int GetNumStarsLit(int CurrentPlayer) {
   return numStars;
 }
 
-byte GetNextStarLevel(int starNum, int CurrentPlayer) {
+byte GetNextStarLevel(int CurrentPlayer) {
 
   // Find the smallest level and return it.
   // This will make sure that you have to complete
@@ -1602,7 +1608,7 @@ void HandleStarHit(byte switchNum) {
     }
   
     AddToBonus(1);
-    nextStarLevel = GetNextStarLevel(starID, CurrentPlayer);
+    nextStarLevel = GetNextStarLevel(CurrentPlayer);
     StarHit[starID][CurrentPlayer] = nextStarLevel;
     SetStarLampState(starID, 1, (nextStarLevel==1?true:false), (nextStarLevel==3?500:0));
 

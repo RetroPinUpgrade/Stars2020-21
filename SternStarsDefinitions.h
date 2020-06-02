@@ -53,7 +53,7 @@
 #define TRIPLE_BONUS            47
 
 
-const struct PlayfieldLight StarsLights[] = {
+struct PlayfieldLight StarsLights[] = {
     {SPECIAL_PURPLE_STAR, 14, 3},
     {SPECIAL_AMBER_STAR, 22, 13},
     {D1K_BONUS, 3, 9},
@@ -154,7 +154,7 @@ const struct PlayfieldLight StarsLights[] = {
 #define NUM_STARS_SWITCHES_WITH_TRIGGERS          7
 #define NUM_STARS_PRIORITY_SWITCHES_WITH_TRIGGERS 3
 
-const struct PlayfieldAndCabinetSwitch StarsSwitches[] = {
+struct PlayfieldAndCabinetSwitch StarsSwitches[] = {
   { SW_RIGHT_SLING, SOL_RIGHT_SLING, 4},
   { SW_LEFT_SLING, SOL_LEFT_SLING, 4},
   { SW_BUMPER, SOL_BUMPER, 3},  

@@ -4,7 +4,7 @@
 
 #define MACHINE_STATE_ATTRACT         0
 
-unsigned long LastSolTestTime = 0;
+unsigned long LastSolTestTime = 0; 
 unsigned long LastSelfTestChange = 0;
 unsigned long SavedValue = 0;
 unsigned long ResetHold = 0;
@@ -45,10 +45,6 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
     }
   }
 
-  // Things to add:
-  //  Free Play Mode
-  //  Extra ball/credit award scores (3)
-  
   if (curSwitch==SW_SELF_TEST_SWITCH && (CurrentTime-LastSelfTestChange)>250) {
     returnState -= 1;
     if (returnState==MACHINE_STATE_TEST_DONE) returnState = MACHINE_STATE_ATTRACT;
@@ -56,6 +52,8 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
   }
 
   if (curStateChanged) {
+    BSOS_SetCoinLockout(false);
+    
     for (int count=0; count<4; count++) {
       BSOS_SetDisplay(count, 0);
       BSOS_SetDisplayBlank(count, 0x00);        

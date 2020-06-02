@@ -201,7 +201,7 @@ void ReadDipSwitches() {
   // Wait for switch capacitors to charge
   for (int count=0; count<BSOS_NUM_SWITCH_LOOPS; count++) WaitOneClockCycle();
   DipSwitches[0] = BSOS_DataRead(ADDRESS_U10_B);
-
+ 
   // Turn on Switch strobe 6 & Read Switches
   BSOS_DataWrite(ADDRESS_U10_A, 0x40);
   BSOS_DataWrite(ADDRESS_U10_B_CONTROL, backupU10BControl & 0xF7);
@@ -263,7 +263,7 @@ int SpaceLeftOnSwitchStack() {
 }
 
 void PushToSwitchStack(byte switchNumber) {
-  if (switchNumber<0 || (switchNumber>39 && switchNumber!=SW_SELF_TEST_SWITCH)) return;
+  if ((switchNumber>39 && switchNumber!=SW_SELF_TEST_SWITCH)) return;
 
   // If the switch stack last index is out of range, then it's an error - return
   if (SpaceLeftOnSwitchStack()==0) return;
@@ -298,7 +298,7 @@ byte BSOS_PullFirstFromSwitchStack() {
 
 
 boolean BSOS_ReadSingleSwitchState(byte switchNum) {
-  if (switchNum>39 || switchNum<0) return false;
+  if (switchNum>39) return false;
 
   int switchByte = switchNum/8;
   int switchBit = switchNum%8;
@@ -314,8 +314,8 @@ int SpaceLeftOnSolenoidStack() {
 }
 
 
-void BSOS_PushToSolenoidStack(byte solenoidNumber, byte numPushes, boolean disableOverride = false) {
-  if (solenoidNumber<0 || solenoidNumber>14) return;
+void BSOS_PushToSolenoidStack(byte solenoidNumber, byte numPushes, boolean disableOverride) {
+  if (solenoidNumber>14) return;
 
   // if the solenoid stack is disabled and this isn't an override push, then return
   if (!disableOverride && !SolenoidStackEnabled) return;
@@ -362,7 +362,7 @@ byte PullFirstFromSolenoidStack() {
 }
 
 
-boolean BSOS_PushToTimedSolenoidStack(byte solenoidNumber, byte numPushes, unsigned long whenToFire, boolean disableOverride = false) {
+boolean BSOS_PushToTimedSolenoidStack(byte solenoidNumber, byte numPushes, unsigned long whenToFire, boolean disableOverride) {
   for (int count=0; count<TIMED_SOLENOID_STACK_SIZE; count++) {
     if (!TimedSolenoidStack[count].inUse) {
       TimedSolenoidStack[count].inUse = true;
@@ -665,7 +665,7 @@ void BSOS_SetDisplayBlank(int displayNumber, byte bitMask) {
 //   bit=   b0 b1 b2 b3 b4 b5
 
 
-void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byte minDigits=2) {
+void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byte minDigits) {
   if (displayNumber<0 || displayNumber>4) return;
 
   DisplayDigitEnable[displayNumber] = 0x20;
@@ -687,7 +687,7 @@ void BSOS_SetDisplayBlankForCreditMatch(boolean creditsOn, boolean matchOn) {
   if (matchOn) DisplayDigitEnable[4] |= 0x18;
 }
 
-void BSOS_SetDisplayFlash(int displayNumber, unsigned long curTime, int period=500, unsigned long magnitude=999999) {
+void BSOS_SetDisplayFlash(int displayNumber, unsigned long curTime, int period, unsigned long magnitude) {
   // A period of zero toggles display every other time
   if (period) {
     if ((curTime/period)%2) {
@@ -700,7 +700,7 @@ void BSOS_SetDisplayFlash(int displayNumber, unsigned long curTime, int period=5
 }
 
 
-void BSOS_SetDisplayFlashCredits(unsigned long curTime, int period=100) {
+void BSOS_SetDisplayFlashCredits(unsigned long curTime, int period) {
   if (period) {
     if ((curTime/period)%2) {
       DisplayDigitEnable[4] |= 0x06;
@@ -744,7 +744,7 @@ void BSOS_SetDisplayBallInPlay(int value, boolean displayOn, boolean showBothDig
 }
 
 
-void BSOS_SetDisplayBIPBlank(byte digitsOn=1) {
+void BSOS_SetDisplayBIPBlank(byte digitsOn) {
   if (digitsOn==0) DisplayDigitEnable[4] &= 0x0F;
   else if (digitsOn==1) DisplayDigitEnable[4] = (DisplayDigitEnable[4] & 0x0F)|0x20;
   else if (digitsOn==2) DisplayDigitEnable[4] = (DisplayDigitEnable[4] & 0x0F)|0x30;  
@@ -752,7 +752,7 @@ void BSOS_SetDisplayBIPBlank(byte digitsOn=1) {
 
 
 
-void BSOS_SetLampState(int lampNum, byte s_lampState, byte s_lampDim=0, int s_lampFlashPeriod=0) {
+void BSOS_SetLampState(int lampNum, byte s_lampState, byte s_lampDim, int s_lampFlashPeriod) {
   if (lampNum>59 || lampNum<0) return;
   
   if (s_lampState) {
@@ -806,7 +806,7 @@ void BSOS_TurnOffAllLamps() {
 }
 
 
-void BSOS_InitializeMPU(int clockSpeedInKHz = 500) {
+void BSOS_InitializeMPU() {
   // Wait for board to boot
   delay(100);
   
@@ -897,18 +897,17 @@ void BSOS_InitializeMPU(int clockSpeedInKHz = 500) {
   BSOS_DataRead(0);  // Reset address bus
 
   // Cleary all possible interrupts by reading the registers
-  byte dataRegister;
-  dataRegister = BSOS_DataRead(ADDRESS_U11_A);
-  dataRegister = BSOS_DataRead(ADDRESS_U11_B);
-  dataRegister = BSOS_DataRead(ADDRESS_U10_A);
-  dataRegister = BSOS_DataRead(ADDRESS_U10_B);
+  BSOS_DataRead(ADDRESS_U11_A);
+  BSOS_DataRead(ADDRESS_U11_B);
+  BSOS_DataRead(ADDRESS_U10_A);
+  BSOS_DataRead(ADDRESS_U10_B);
   BSOS_DataRead(0);  // Reset address bus
 
 }
 
 
 byte BSOS_GetDipSwitches(byte index) {
-  if (index<0 || index>3) return 0x00;
+  if (index>3) return 0x00;
   return DipSwitches[index];
 }
 
@@ -933,7 +932,7 @@ void BSOS_SetContinuousSolenoids(byte continuousSolenoidMask = CONTSOL_DISABLE_F
 */
 
 
-void BSOS_SetCoinLockout(boolean lockoutOn = false, byte solbit = CONTSOL_DISABLE_COIN_LOCKOUT) {
+void BSOS_SetCoinLockout(boolean lockoutOn, byte solbit) {
   if (lockoutOn) {
     CurrentSolenoidByte = CurrentSolenoidByte & ~solbit;
   } else {
@@ -943,7 +942,7 @@ void BSOS_SetCoinLockout(boolean lockoutOn = false, byte solbit = CONTSOL_DISABL
 }
 
 
-void BSOS_SetDisableFlippers(boolean disableFlippers = true, byte solbit = CONTSOL_DISABLE_FLIPPERS) {
+void BSOS_SetDisableFlippers(boolean disableFlippers, byte solbit) {
   if (disableFlippers) {
     CurrentSolenoidByte = CurrentSolenoidByte | solbit;
   } else {
