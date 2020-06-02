@@ -14,11 +14,11 @@ At the moment, code is available for the following machines:
 Stars (Stern, 1978)  
 Black Jack (Bally, 1977)  
 PinballBaseMachine - basic framework to build a new game from  
-
+[This repo contains project files for several projects dependent on BallySternOS, and you must create a separate directory for each project. Arduino requires the project (.ino) file be in a directoy of that same name]
 
 Example instructions to get started with Stars:  
 1) Create a Stars2020 directory (the directory has to be the same name as the project's .ino file for some reason)  
-2) Put these files in the directory (these are all you need for this game):  
+2) Put these files (and ONLY these files) in the directory (these are all you need for this game):  
 Stars2020.ino  
 BallySternOS.cpp  
 BallySternOS.h  
