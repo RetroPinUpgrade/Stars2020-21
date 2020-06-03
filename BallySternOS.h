@@ -1,3 +1,23 @@
+/**************************************************************************
+ *     This file is part of the Bally/Stern OS for Arduino Project.
+
+    I, Dick Hamill, the author of this program disclaim all copyright
+    in order to make this program freely available in perpetuity to
+    anyone who would like to use it. Dick Hamill, 6/1/2020
+
+    BallySternOS is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BallySternOS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    See <https://www.gnu.org/licenses/>.
+ */
+
 #ifndef BALLY_STERN_OS_H
 
 struct PlayfieldLight {
@@ -69,6 +89,9 @@ struct PlayfieldAndCabinetSwitch {
 // 60 us
 // So, set this to (0.000060) / (1/Clock Frequency)
 #define BSOS_NUM_LAMP_LOOPS   30
+
+// Fast boards might need a slower lamp strobe
+#define BSOS_SLOW_DOWN_LAMP_STROBE  0
 
 #define BSOS_CREDITS_EEPROM_BYTE          5
 #define BSOS_HIGHSCORE_EEPROM_START_BYTE  1

@@ -1,3 +1,23 @@
+/**************************************************************************
+ *     This file is part of the Bally/Stern OS for Arduino Project.
+
+    I, Dick Hamill, the author of this program disclaim all copyright
+    in order to make this program freely available in perpetuity to
+    anyone who would like to use it. Dick Hamill, 6/1/2020
+
+    BallySternOS is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BallySternOS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    See <https://www.gnu.org/licenses/>.
+ */
+ 
 #include <arduino.h>
 #include <EEPROM.h>
 #define DEBUG_MESSAGES    1
@@ -596,8 +616,14 @@ void InterruptService2() {
       byte lampData = 0xF0 + lampBitCount;
       // Latch address & strobe
       BSOS_DataWrite(ADDRESS_U10_A, lampData);
+      if (BSOS_SLOW_DOWN_LAMP_STROBE) WaitOneClockCycle();
+
       BSOS_DataWrite(ADDRESS_U10_B_CONTROL, 0x38);
+      if (BSOS_SLOW_DOWN_LAMP_STROBE) WaitOneClockCycle();
+
       BSOS_DataWrite(ADDRESS_U10_B_CONTROL, 0x30);
+      if (BSOS_SLOW_DOWN_LAMP_STROBE) WaitOneClockCycle();
+
       // Use the inhibit lines to set the actual data to the lamp SCRs 
       // (here, we don't care about the lower nibble because the address was already latched)
       byte lampOutput = LampStates[lampBitCount];
@@ -605,7 +631,9 @@ void InterruptService2() {
       // in order to dim those lights
       if (numberOfU10Interrupts&0x00000001) lampOutput |= LampDim0[lampBitCount];
       if (numberOfU10Interrupts&0x00000002) lampOutput |= LampDim1[lampBitCount];
+
       BSOS_DataWrite(ADDRESS_U10_A, lampOutput);
+      if (BSOS_SLOW_DOWN_LAMP_STROBE) WaitOneClockCycle();
     }
 
     // Latch 0xFF separately without interrupt clear
