@@ -1,3 +1,23 @@
+/**************************************************************************
+ *     This file is part of the Bally/Stern OS for Arduino Project.
+
+    I, Dick Hamill, the author of this program disclaim all copyright
+    in order to make this program freely available in perpetuity to
+    anyone who would like to use it. Dick Hamill, 6/1/2020
+
+    BallySternOS is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    BallySternOS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    See <https://www.gnu.org/licenses/>.
+ */
+
 #include <arduino.h>
 #include "SelfTestAndAudit.h"
 #include "BallySternOS.h"
@@ -110,6 +130,7 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
       LastSolTestTime = CurrentTime;
       BSOS_EnableSolenoidStack(); 
       BSOS_SetDisableFlippers(false);
+      BSOS_SetDisplayBlank(4, 0);
       BSOS_SetDisplayCredits(0);
       BSOS_SetDisplayBallInPlay(3);
       SolenoidCycle = true;
@@ -131,7 +152,6 @@ int RunBaseSelfTest(int curState, boolean curStateChanged, unsigned long Current
       LastSolTestTime = CurrentTime;
     }
     
-    BSOS_SetDisplayFlash(4, CurrentTime, 500);    
   } else if (curState==MACHINE_STATE_TEST_SWITCHES) {
     if (curStateChanged) {
       BSOS_TurnOffAllLamps();
