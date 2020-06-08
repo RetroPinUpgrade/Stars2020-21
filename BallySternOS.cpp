@@ -1076,7 +1076,7 @@ void BSOS_WriteHighScoreToEEProm(unsigned long score) {
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+2, (byte)((score>>16) & 0x000000FF));
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+1, (byte)((score>>8) & 0x000000FF));
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE, (byte)(score & 0x000000FF));
-        Serial.write("Saving high score (3)\n");
+//  Serial.write("Saving high score (3)\n");
 }
 
 unsigned long BSOS_ReadHighScoreFromEEProm() {
