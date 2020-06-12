@@ -539,6 +539,9 @@ void InterruptService2() {
       // Read the switches
       SwitchesNow[switchCount] = BSOS_DataRead(ADDRESS_U10_B);
 
+      //Unset the strobe
+      BSOS_DataWrite(ADDRESS_U10_A, 0x00);
+
       // Some switches need to trigger immediate closures (bumpers & slings)
       startingClosures = (SwitchesNow[switchCount]) & (~SwitchesMinus1[switchCount]);
       boolean immediateSolenoidFired = false;

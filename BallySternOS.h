@@ -85,7 +85,7 @@ struct PlayfieldAndCabinetSwitch {
 // needed to get a delay of 80 us
 // So, set it to (0.000080) / (1/Clock Frequency)
 // Assuming Frequency = 500kHz,  40 = (0.000080) / (1/500000)
-#define BSOS_NUM_SWITCH_LOOPS 40
+#define BSOS_NUM_SWITCH_LOOPS 70
 // 60 us
 // So, set this to (0.000060) / (1/Clock Frequency)
 #define BSOS_NUM_LAMP_LOOPS   30
