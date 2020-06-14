@@ -20,11 +20,16 @@
 
 #ifndef BALLY_STERN_OS_H
 
+#define BALLY_STERN_OS_MAJOR_VERSION  1
+#define BALLY_STERN_OS_MINOR_VERSION  0
+
+/*
 struct PlayfieldLight {
   byte lightNum;
   byte row;
   byte col;
 };
+*/
 
 struct PlayfieldAndCabinetSwitch {
   byte switchNum;
@@ -111,15 +116,15 @@ struct PlayfieldAndCabinetSwitch {
 //   Initialization
 void BSOS_InitializeMPU(); // This function used to take clock speed as a parameter - now delays are in defines at the top of this file
 void BSOS_SetupGameSwitches(int s_numSwitches, int s_numPrioritySwitches, PlayfieldAndCabinetSwitch *s_gameSwitchArray);
-void BSOS_SetupGameLights(int s_numLights, PlayfieldLight *s_gameLightArray);
+//void BSOS_SetupGameLights(int s_numLights, PlayfieldLight *s_gameLightArray);
 byte BSOS_GetDipSwitches(byte index);
 
 // EEProm Helper Functions
-unsigned long BSOS_ReadHighScoreFromEEProm();
-void BSOS_WriteHighScoreToEEProm(unsigned long score);
-byte BSOS_ReadCreditsFromEEProm();
-void BSOS_WriteCreditsToEEProm(byte credits);
-unsigned long BSOS_ReadULFromEEProm(unsigned short startByte);
+//unsigned long BSOS_ReadHighScoreFromEEProm();
+//void BSOS_WriteHighScoreToEEProm(unsigned long score);
+byte BSOS_ReadByteFromEEProm(unsigned short startByte);
+void BSOS_WriteByteToEEProm(unsigned short startByte, byte value);
+unsigned long BSOS_ReadULFromEEProm(unsigned short startByte, unsigned long defaultValue=0);
 void BSOS_WriteULToEEProm(unsigned short startByte, unsigned long value);
 
 //   Swtiches
@@ -137,17 +142,14 @@ boolean BSOS_PushToTimedSolenoidStack(byte solenoidNumber, byte numPushes, unsig
 void BSOS_UpdateTimedSolenoidStack(unsigned long curTime);
 
 //   Displays
-void BSOS_SetDisplay(int displayNumber, unsigned long value);
+void BSOS_SetDisplay(int displayNumber, unsigned long value, boolean blankByMagnitude=false, byte minDigits=2);
 void BSOS_SetDisplayBlank(int displayNumber, byte bitMask);
-void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byte minDigits=2);
-void BSOS_SetDisplayBlankForCreditMatch(boolean creditsOn, boolean matchOn);
 void BSOS_SetDisplayCredits(int value, boolean displayOn = true, boolean showBothDigits=true);
 void BSOS_SetDisplayMatch(int value, boolean displayOn = true, boolean showBothDigits=true);
 void BSOS_SetDisplayBallInPlay(int value, boolean displayOn = true, boolean showBothDigits=true);
-void BSOS_SetDisplayBIPBlank(byte digitsOn=1);
-void BSOS_SetDisplayFlash(int displayNumber, unsigned long curTime, int period=500, unsigned long magnitude=999999);
+void BSOS_SetDisplayFlash(int displayNumber, unsigned long value, unsigned long curTime, int period=500, byte minDigits=2);
 void BSOS_SetDisplayFlashCredits(unsigned long curTime, int period=100);
-void BSOS_CycleAllDisplays(unsigned long curTime); // Self-test function
+void BSOS_CycleAllDisplays(unsigned long curTime, byte digitNum=0); // Self-test function
 byte BSOS_GetDisplayBlank(int displayNumber);
 
 //   Lamps
@@ -157,18 +159,18 @@ void BSOS_FlashAllLamps(unsigned long curTime); // Self-test function
 void BSOS_TurnOffAllLamps();
 
 //   Sound
-void BSOS_PlaySound(byte soundByte);
+void BSOS_PlaySoundSquawkAndTalk(byte soundByte);
 
-
+//   General
 byte BSOS_DataRead(int address);
 
 
 #ifdef BALLY_STERN_CPP_FILE
   int NumGameSwitches = 0;
   int NumGamePrioritySwitches = 0;
-  int NumGameLights = 0;
+//  int NumGameLights = 0;
   
-  PlayfieldLight *GameLights = NULL;
+//  PlayfieldLight *GameLights = NULL;
   PlayfieldAndCabinetSwitch *GameSwitches = NULL;
 #endif
 

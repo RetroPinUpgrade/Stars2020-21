@@ -501,7 +501,7 @@ void InterruptService2() {
   }
 
   // If the IRQ bit of U10BControl is set, do the Zero-crossing interrupt handler
-  if (u10BControl & 0x80 && (InsideZeroCrossingInterrupt==0)) {
+  if ((u10BControl & 0x80) && (InsideZeroCrossingInterrupt==0)) {
     InsideZeroCrossingInterrupt = InsideZeroCrossingInterrupt + 1;
 
     byte u10BControlLatest = BSOS_DataRead(ADDRESS_U10_B_CONTROL);
@@ -598,7 +598,10 @@ void InterruptService2() {
         }        
       }
 
+      // There are no port reads or writes for the rest of the loop, 
+      // so we can allow the display interrupt to fire
       interrupts();
+      
       // Wait so total delay will allow lamp SCRs to get to the proper voltage
       for (waitCount=0; waitCount<BSOS_NUM_LAMP_LOOPS; waitCount++) WaitOneClockCycle();
       noInterrupts();
@@ -633,7 +636,7 @@ void InterruptService2() {
       // Every other time through the cycle, we OR in the dim variable
       // in order to dim those lights
       if (numberOfU10Interrupts&0x00000001) lampOutput |= LampDim0[lampBitCount];
-      if (numberOfU10Interrupts&0x00000002) lampOutput |= LampDim1[lampBitCount];
+      if (numberOfU10Interrupts%3) lampOutput |= LampDim1[lampBitCount];
 
       BSOS_DataWrite(ADDRESS_U10_A, lampOutput);
       if (BSOS_SLOW_DOWN_LAMP_STROBE) WaitOneClockCycle();
@@ -668,15 +671,28 @@ void InterruptService2() {
 
 
 
-void BSOS_SetDisplay(int displayNumber, unsigned long value) {
+void BSOS_SetDisplay(int displayNumber, unsigned long value, boolean blankByMagnitude, byte minDigits) {
+//void BSOS_SetDisplay(int displayNumber, unsigned long value) {
   if (displayNumber<0 || displayNumber>4) return;
 
+  byte blank = 0x00;
+
+  for (int count=0; count<6; count++) {
+    blank = blank * 2;
+    if (value!=0 || count<minDigits) blank |= 1;
+    DisplayDigits[displayNumber][5-count] = value%10;
+    value /= 10;    
+  }
+
+  if (blankByMagnitude) DisplayDigitEnable[displayNumber] = blank;
+/*
   DisplayDigits[displayNumber][0] = (value%1000000) / 100000;
   DisplayDigits[displayNumber][1] = (value%100000) / 10000;
   DisplayDigits[displayNumber][2] = (value%10000) / 1000;
   DisplayDigits[displayNumber][3] = (value%1000) / 100;
   DisplayDigits[displayNumber][4] = (value%100) / 10;
   DisplayDigits[displayNumber][5] = (value%10);
+*/  
 }
 
 void BSOS_SetDisplayBlank(int displayNumber, byte bitMask) {
@@ -695,7 +711,7 @@ void BSOS_SetDisplayBlank(int displayNumber, byte bitMask) {
 //   digit=  1  2  3  4  5  6
 //   bit=   b0 b1 b2 b3 b4 b5
 
-
+/*
 void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byte minDigits) {
   if (displayNumber<0 || displayNumber>4) return;
 
@@ -706,23 +722,26 @@ void BSOS_SetDisplayBlankByMagnitude(int displayNumber, unsigned long value, byt
   if (value>9999 || minDigits>4) DisplayDigitEnable[displayNumber] |= 0x02;
   if (value>99999 || minDigits>5) DisplayDigitEnable[displayNumber] |= 0x01;
 }
+*/
 
 byte BSOS_GetDisplayBlank(int displayNumber) {
   if (displayNumber<0 || displayNumber>4) return 0;
   return DisplayDigitEnable[displayNumber];
 }
 
+/*
 void BSOS_SetDisplayBlankForCreditMatch(boolean creditsOn, boolean matchOn) {
   DisplayDigitEnable[4] = 0;
   if (creditsOn) DisplayDigitEnable[4] |= 0x03;
   if (matchOn) DisplayDigitEnable[4] |= 0x18;
 }
+*/
 
-void BSOS_SetDisplayFlash(int displayNumber, unsigned long curTime, int period, unsigned long magnitude) {
+void BSOS_SetDisplayFlash(int displayNumber, unsigned long value, unsigned long curTime, int period, byte minDigits) {
   // A period of zero toggles display every other time
   if (period) {
     if ((curTime/period)%2) {
-      BSOS_SetDisplayBlankByMagnitude(displayNumber, magnitude);
+      BSOS_SetDisplay(displayNumber, value, true, minDigits);
     } else {
       BSOS_SetDisplayBlank(displayNumber, 0);
     }
@@ -775,12 +794,13 @@ void BSOS_SetDisplayBallInPlay(int value, boolean displayOn, boolean showBothDig
 }
 
 
+/*
 void BSOS_SetDisplayBIPBlank(byte digitsOn) {
   if (digitsOn==0) DisplayDigitEnable[4] &= 0x0F;
   else if (digitsOn==1) DisplayDigitEnable[4] = (DisplayDigitEnable[4] & 0x0F)|0x20;
   else if (digitsOn==2) DisplayDigitEnable[4] = (DisplayDigitEnable[4] & 0x0F)|0x30;  
 }
-
+*/
 
 
 void BSOS_SetLampState(int lampNum, byte s_lampState, byte s_lampDim, int s_lampFlashPeriod) {
@@ -950,11 +970,12 @@ void BSOS_SetupGameSwitches(int s_numSwitches, int s_numPrioritySwitches, Playfi
 }
 
 
+/*
 void BSOS_SetupGameLights(int s_numLights, PlayfieldLight *s_gameLightArray) {
   NumGameLights = s_numLights;
   GameLights = s_gameLightArray;
 }
-
+*/
 /*
 void BSOS_SetContinuousSolenoids(byte continuousSolenoidMask = CONTSOL_DISABLE_FLIPPERS | CONTSOL_DISABLE_COIN_LOCKOUT) {
   CurrentSolenoidByte = (CurrentSolenoidByte&0x0F) | continuousSolenoidMask;
@@ -1000,18 +1021,31 @@ void BSOS_EnableSolenoidStack() {
 
 
 
-void BSOS_CycleAllDisplays(unsigned long curTime) {
+void BSOS_CycleAllDisplays(unsigned long curTime, byte digitNum) {
   int displayDigit = (curTime/250)%10;
   unsigned long value;
   value = displayDigit*111111;
 
+  byte displayNumToShow = 0;
+  byte displayBlank = 0x3F;
+  if (digitNum!=0) {
+    displayNumToShow = (digitNum-1)/6;
+    displayBlank = (0x20)>>((digitNum-1)%6);
+  }
+
   for (int count=0; count<5; count++) {
-    BSOS_SetDisplay(count, value);
+    if (digitNum) {
+      BSOS_SetDisplay(count, value);
+      if (count==displayNumToShow) BSOS_SetDisplayBlank(count, displayBlank);
+      else BSOS_SetDisplayBlank(count, 0);
+    } else {
+      BSOS_SetDisplay(count, value, true);
+    }
   }
 }
 
 
-void BSOS_PlaySound(byte soundByte) {
+void BSOS_PlaySoundSquawkAndTalk(byte soundByte) {
 
   byte oldSolenoidControlByte, soundControlByte;
 
@@ -1037,7 +1071,7 @@ void BSOS_PlaySound(byte soundByte) {
   BSOS_DataWrite(ADDRESS_U11_B, soundControlByte);
   
   // wait 200 microseconds
-  delayMicroseconds(200);
+  delayMicroseconds(142);
 
   // remove lower nibble
   soundControlByte &= 0xF0;
@@ -1047,7 +1081,7 @@ void BSOS_PlaySound(byte soundByte) {
   BSOS_DataWrite(ADDRESS_U11_B, soundControlByte);
 
   // wait 200 microseconds
-  delayMicroseconds(200);
+  delayMicroseconds(78);
 
   // Turn off sound latch
   BSOS_DataWrite(ADDRESS_U11_B_CONTROL, BSOS_DataRead(ADDRESS_U11_B_CONTROL)&0xF7);
@@ -1059,27 +1093,27 @@ void BSOS_PlaySound(byte soundByte) {
 
 // EEProm Helper functions
 
-void BSOS_WriteCreditsToEEProm(byte credits) {
-  EEPROM.write(BSOS_CREDITS_EEPROM_BYTE, credits);
+void BSOS_WriteByteToEEProm(unsigned short startByte, byte value) {
+  EEPROM.write(startByte, value);
 }
 
-byte BSOS_ReadCreditsFromEEProm() {
-  byte value = EEPROM.read(BSOS_CREDITS_EEPROM_BYTE);
+byte BSOS_ReadByteFromEEProm(unsigned short startByte) {
+  byte value = EEPROM.read(startByte);
 
   // If this value is unset, set it
   if (value==0xFF) {
     value = 0;
-    BSOS_WriteCreditsToEEProm(value);
+    BSOS_WriteByteToEEProm(startByte, value);
   }
   return value;
 }
 
+/*
 void BSOS_WriteHighScoreToEEProm(unsigned long score) {
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+3, (byte)(score>>24));
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+2, (byte)((score>>16) & 0x000000FF));
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE+1, (byte)((score>>8) & 0x000000FF));
   EEPROM.write(BSOS_HIGHSCORE_EEPROM_START_BYTE, (byte)(score & 0x000000FF));
-//  Serial.write("Saving high score (3)\n");
 }
 
 unsigned long BSOS_ReadHighScoreFromEEProm() {
@@ -1096,9 +1130,9 @@ unsigned long BSOS_ReadHighScoreFromEEProm() {
   }
   return value;
 }
+*/
 
-
-unsigned long BSOS_ReadULFromEEProm(unsigned short startByte) {
+unsigned long BSOS_ReadULFromEEProm(unsigned short startByte, unsigned long defaultValue) {
   unsigned long value;
 
   value = (((unsigned long)EEPROM.read(startByte+3))<<24) | 
@@ -1107,7 +1141,7 @@ unsigned long BSOS_ReadULFromEEProm(unsigned short startByte) {
           ((unsigned long)(EEPROM.read(startByte)));
 
   if (value==0xFFFFFFFF) {
-    value = 0; 
+    value = defaultValue; 
     BSOS_WriteULToEEProm(startByte, value);
   }
   return value;
