@@ -5,52 +5,58 @@
 
 
 #define SPECIAL_PURPLE_STAR     0
+#define SPECIAL_GREEN_STAR      1
+#define SPECIAL_YELLOW_STAR     2     
+#define SPECIAL_WHITE_STAR      3
 #define SPECIAL_AMBER_STAR      4
 #define D1K_BONUS               8
+#define D2K_BONUS               9
+#define D3K_BONUS               10
+#define D4K_BONUS               11
 #define D5K_BONUS               12
+#define D6K_BONUS               13
+#define D7K_BONUS               14
+#define D8K_BONUS               15
 #define D9K_BONUS               16
+#define D10K_BONUS              17
 #define STAR_PURPLE             20
+#define STAR_WHITE              21
+#define STAR_GREEN              22
+#define STAR_AMBER              23
 #define STAR_YELLOW             24
 #define D2_ADVANCE_BONUS        28
-#define DOUBLE_BONUS_FEATURE    36
-#define SHOOT_AGAIN             40
-#define D400_1_SPINNER          44
-#define SPECIAL_GREEN_STAR      1
-#define D2K_BONUS               9
-#define D6K_BONUS               13
-#define D10K_BONUS              17
-#define SPECIAL_WHITE_STAR      3
 #define OUT_LANES               29
 #define IN_LANES                33
+#define DOUBLE_BONUS_FEATURE    36
 #define TRIPLE_BONUS_FEATURE    37
-#define D400_2_SPINNER          45
-#define BALL_IN_PLAY            48
-#define PLAYER_1                52
-#define PLAYER_1_UP             56
-#define MATCH                   41
-#define HIGHEST_SCORE           49
-#define PLAYER_2                53
-#define PLAYER_2_UP             57
-#define GAME_OVER               50
-#define PLAYER_3                54
-#define PLAYER_3_UP             58
-#define TILT                    51
-#define PLAYER_4                55
-#define PLAYER_4_UP             59
-#define SPECIAL_YELLOW_STAR     2     
-#define D3K_BONUS               10
-#define D7K_BONUS               14
-#define STAR_GREEN              22
 #define WOW                     38
-#define D7000_RIGHT             42
-#define DOUBLE_BONUS            46
-#define STAR_WHITE              21
-#define D4K_BONUS               11
-#define D8K_BONUS               15
-#define STAR_AMBER              23
 #define SPECIAL_FEATURE         39
+#define SHOOT_AGAIN             40
+#define MATCH                   41
+#define D7000_RIGHT             42
 #define D7000_LEFT              43
+#define D400_1_SPINNER          44
+#define D400_2_SPINNER          45
+#define DOUBLE_BONUS            46
 #define TRIPLE_BONUS            47
+#define BALL_IN_PLAY            48
+#define HIGHEST_SCORE           49
+#define GAME_OVER               50
+#define TILT                    51
+#define PLAYER_1                52
+#define PLAYER_2                53
+#define PLAYER_3                54
+#define PLAYER_4                55
+#define PLAYER_1_UP             56
+#define PLAYER_2_UP             57
+#define PLAYER_3_UP             58
+#define PLAYER_4_UP             59
+
+struct PlayfieldLight {
+  byte lightNum;
+  byte row;
+  byte col;
+};
 
 
 struct PlayfieldLight StarsLights[] = {
@@ -151,15 +157,11 @@ struct PlayfieldLight StarsLights[] = {
 #define SOLCONT_FLIPPERS      0x80
 #define SOLCONT_COIN_LOCKOUT  0x01
 
-#define NUM_STARS_SWITCHES_WITH_TRIGGERS          7
+#define NUM_STARS_SWITCHES_WITH_TRIGGERS          3
 #define NUM_STARS_PRIORITY_SWITCHES_WITH_TRIGGERS 3
 
 struct PlayfieldAndCabinetSwitch StarsSwitches[] = {
   { SW_RIGHT_SLING, SOL_RIGHT_SLING, 4},
   { SW_LEFT_SLING, SOL_LEFT_SLING, 4},
-  { SW_BUMPER, SOL_BUMPER, 3},  
-  { SW_LEFT_SPINNER, SOL_CHIME_10000, 3},
-  { SW_ROLLOVER, SOL_CHIME_100, 3},
-  { SW_RIGHT_SPINNER, SOL_CHIME_10000, 3},
-  { SW_10_PTS, SOL_CHIME_10, 4}
+  { SW_BUMPER, SOL_BUMPER, 3}
 };
