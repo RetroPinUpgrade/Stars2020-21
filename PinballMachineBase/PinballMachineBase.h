@@ -46,7 +46,7 @@
 #define NUM_PRIORITY_SWITCHES_WITH_TRIGGERS 2
 
 // Define automatic solenoid triggers (switch, solenoid, number of 1/120ths of a second to fire)
-const struct PlayfieldAndCabinetSwitch TriggeredSwitches[] = {
+struct PlayfieldAndCabinetSwitch TriggeredSwitches[] = {
   { SW_LEFT_SLING, SOL_LEFT_SLING, 4 },
   { SW_RIGHT_SLING, SOL_RIGHT_SLING, 4 },
   { SW_10_PT_SWITCH, SOL_CHIME_10, 3 },

@@ -65,10 +65,14 @@ void setup() {
   byte dipBank = BSOS_GetDipSwitches(0);
 
   // Use dip switches to set up game variables
+  if (DEBUG_MESSAGES) {
+    char buf[32];
+    sprintf(buf, "DipBank 0 = 0x%02X\n", dipBank);
+    Serial.write(buf);
+  }
 
-
-  HighScore = BSOS_ReadHighScoreFromEEProm();
-  Credits = BSOS_ReadCreditsFromEEProm();
+  HighScore = BSOS_ReadULFromEEProm(BSOS_HIGHSCORE_EEPROM_START_BYTE, 10000);
+  Credits = BSOS_ReadByteFromEEProm(BSOS_CREDITS_EEPROM_BYTE);
   if (Credits>MaximumCredits) Credits = MaximumCredits;
 
   BallsPerGame = 3;
@@ -92,7 +96,7 @@ void SetPlayerLamps(byte numPlayers, int flashPeriod=0) {
 void AddCredit() {
   if (Credits<MaximumCredits) {
     Credits++;
-    BSOS_WriteCreditsToEEProm(Credits);
+    BSOS_WriteByteToEEProm(BSOS_CREDITS_EEPROM_BYTE, Credits);
 //    PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
   } else {
   }
@@ -113,7 +117,7 @@ boolean AddPlayer() {
 
   if (!FreePlayMode) {
     Credits -= 1;
-    BSOS_WriteCreditsToEEProm(Credits);
+    BSOS_WriteByteToEEProm(BSOS_CREDITS_EEPROM_BYTE, Credits);
   }
 
   BSOS_SetDisplayCredits(Credits);
@@ -138,8 +142,7 @@ int InitNewBall(bool curStateChanged, byte playerNum, int ballNum) {
     }
 
     for (int count=0; count<CurrentNumPlayers; count++) {
-      BSOS_SetDisplay(count, CurrentScores[count]);
-      BSOS_SetDisplayBlankByMagnitude(count, CurrentScores[count]);
+      BSOS_SetDisplay(count, CurrentScores[count], true, 2);
     }
 
     BSOS_SetDisplayBallInPlay(ballNum);
@@ -214,8 +217,7 @@ int RunAttractMode(int curState, boolean curStateChanged) {
       SetPlayerLamps(0);
   
       for (int count=0; count<4; count++) {
-        BSOS_SetDisplay(count, HighScore);
-        BSOS_SetDisplayBlankByMagnitude(count, HighScore);
+        BSOS_SetDisplay(count, HighScore, true, 2);
       }
       BSOS_SetDisplayCredits(Credits, true);
       BSOS_SetDisplayBallInPlay(0, true);
@@ -231,8 +233,7 @@ int RunAttractMode(int curState, boolean curStateChanged) {
       for (int count=0; count<4; count++) {
         if (CurrentNumPlayers>0) {
           if (count<CurrentNumPlayers) {
-            BSOS_SetDisplayBlankByMagnitude(count, CurrentScores[count]);
-            BSOS_SetDisplay(count, CurrentScores[count]); 
+            BSOS_SetDisplay(count, CurrentScores[count], true, 2); 
           } else {
             BSOS_SetDisplayBlank(count, 0x00);
             BSOS_SetDisplay(count, 0);          
@@ -289,7 +290,7 @@ int NormalGamePlay() {
 
   // If the playfield hasn't been validated yet, flash score and player up num
   if (BallFirstSwitchHitTime==0) {
-    BSOS_SetDisplayFlash(CurrentPlayer, CurrentTime, 500, (CurrentScores[CurrentPlayer]==0)?99:CurrentScores[CurrentPlayer]);
+    BSOS_SetDisplayFlash(CurrentPlayer, CurrentScores[CurrentPlayer], CurrentTime, 500, 2);
     if (!PlayerUpLightBlinking) {
       SetPlayerLamps((CurrentPlayer+1), 500);
       PlayerUpLightBlinking = true;
@@ -426,8 +427,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
 //        PlaySoundEffect(SOUND_EFFECT_GAME_OVER);
         SetPlayerLamps(0);
         for (int count=0; count<CurrentNumPlayers; count++) {
-          BSOS_SetDisplay(count, CurrentScores[count]);
-          BSOS_SetDisplayBlankByMagnitude(count, CurrentScores[count], 2);
+          BSOS_SetDisplay(count, CurrentScores[count], true, 2);
         }
 
         returnState = MACHINE_STATE_MATCH_MODE;
@@ -469,6 +469,9 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     }
   }
 
+  if (scoreAtTop!=CurrentScores[CurrentPlayer]) {
+    Serial.write("Score changed\n");
+  }
   return returnState;
 }
 
