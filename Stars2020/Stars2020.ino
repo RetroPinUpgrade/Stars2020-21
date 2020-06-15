@@ -839,7 +839,7 @@ void PlayBackgroundSong(byte songNum) {
   if (CurrentBackgroundSong!=songNum) {
     if (CurrentBackgroundSong!=SOUND_EFFECT_NONE) wTrig.trackStop(CurrentBackgroundSong);
     if (songNum!=SOUND_EFFECT_NONE) {
-      wTrig.trackPlayPoly(songNum, true);
+      wTrig.trackPlayPoly(songNum);
       wTrig.trackLoop(songNum, true);
     }
     CurrentBackgroundSong = songNum;
