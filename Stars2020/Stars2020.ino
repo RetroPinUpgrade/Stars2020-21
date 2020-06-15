@@ -22,11 +22,13 @@
 #include "SternStarsDefinitions.h"
 #include "SelfTestAndAudit.h"
 #include <EEPROM.h>
-//#include <AltSoftSerial.h>
-//#include <wavTrigger.h>
 
+//#define USE_WAV_TRIGGER
 
-//wavTrigger wTrig;             // Our WAV Trigger object
+#ifdef USE_WAV_TRIGGER
+#include <wavTrigger.h>
+wavTrigger wTrig;             // Our WAV Trigger object
+#endif 
 
 #define STARS2020_MAJOR_VERSION  2020
 #define STARS2020_MINOR_VERSION  1
@@ -101,43 +103,47 @@ boolean MachineStateChanged = true;
 #define EEPROM_STAR_LEVEL_AWARD_BYTE    148
 #define EEPROM_WIZARD_REWARD_BYTE       152
 
-
-#define SOUND_EFFECT_STAR_REWARD    1
-#define SOUND_EFFECT_BONUS_COUNT    2
-#define SOUND_EFFECT_INLANE_UNLIT   3
-#define SOUND_EFFECT_OUTLANE_UNLIT  4
-#define SOUND_EFFECT_INLANE_LIT     5
-#define SOUND_EFFECT_OUTLANE_LIT    6
-#define SOUND_EFFECT_BUMPER_HIT     7
-#define SOUND_EFFECT_7K_BONUS       8
-#define SOUND_EFFECT_DROP_TARGET    9
-#define SOUND_EFFECT_ADD_CREDIT     10
-#define SOUND_EFFECT_ADD_PLAYER_1   11
-#define SOUND_EFFECT_ADD_PLAYER_2   SOUND_EFFECT_ADD_PLAYER_1+1
-#define SOUND_EFFECT_ADD_PLAYER_3   SOUND_EFFECT_ADD_PLAYER_1+2
-#define SOUND_EFFECT_ADD_PLAYER_4   SOUND_EFFECT_ADD_PLAYER_1+3
-#define SOUND_EFFECT_PLAYER_1_UP    15
-#define SOUND_EFFECT_PLAYER_2_UP    SOUND_EFFECT_PLAYER_1_UP+1
-#define SOUND_EFFECT_PLAYER_3_UP    SOUND_EFFECT_PLAYER_1_UP+2
-#define SOUND_EFFECT_PLAYER_4_UP    SOUND_EFFECT_PLAYER_1_UP+3
-#define SOUND_EFFECT_BALL_OVER      19
-#define SOUND_EFFECT_GAME_OVER      20
-#define SOUND_EFFECT_2X_BONUS_COUNT    21
-#define SOUND_EFFECT_3X_BONUS_COUNT    22
-#define SOUND_EFFECT_EXTRA_BALL     23
-#define SOUND_EFFECT_MACHINE_START  24
-#define SOUND_EFFECT_SKILL_SHOT     25
+#define SOUND_EFFECT_NONE               0
+#define SOUND_EFFECT_STAR_REWARD        1
+#define SOUND_EFFECT_BONUS_COUNT        2
+#define SOUND_EFFECT_INLANE_UNLIT       3
+#define SOUND_EFFECT_OUTLANE_UNLIT      4
+#define SOUND_EFFECT_INLANE_LIT         5
+#define SOUND_EFFECT_OUTLANE_LIT        6
+#define SOUND_EFFECT_BUMPER_HIT         7
+#define SOUND_EFFECT_7K_BONUS           8
+#define SOUND_EFFECT_DROP_TARGET        9
+#define SOUND_EFFECT_ADD_CREDIT         10
+#define SOUND_EFFECT_ADD_PLAYER_1       11
+#define SOUND_EFFECT_ADD_PLAYER_2       SOUND_EFFECT_ADD_PLAYER_1+1
+#define SOUND_EFFECT_ADD_PLAYER_3       SOUND_EFFECT_ADD_PLAYER_1+2
+#define SOUND_EFFECT_ADD_PLAYER_4       SOUND_EFFECT_ADD_PLAYER_1+3
+#define SOUND_EFFECT_PLAYER_1_UP        15
+#define SOUND_EFFECT_PLAYER_2_UP        SOUND_EFFECT_PLAYER_1_UP+1
+#define SOUND_EFFECT_PLAYER_3_UP        SOUND_EFFECT_PLAYER_1_UP+2
+#define SOUND_EFFECT_PLAYER_4_UP        SOUND_EFFECT_PLAYER_1_UP+3
+#define SOUND_EFFECT_BALL_OVER          19
+#define SOUND_EFFECT_GAME_OVER          20
+#define SOUND_EFFECT_2X_BONUS_COUNT     21
+#define SOUND_EFFECT_3X_BONUS_COUNT     22
+#define SOUND_EFFECT_EXTRA_BALL         23
+#define SOUND_EFFECT_MACHINE_START      24
+#define SOUND_EFFECT_SKILL_SHOT         25
 #define SOUND_EFFECT_HIT_STAR_LEVEL_UP  26
 #define SOUND_EFFECT_MISSED_STAR_LEVEL_UP   27
-#define SOUND_EFFECT_TILT_WARNING   28
-#define SOUND_EFFECT_WIZARD_SCORE   29
-#define SOUND_EFFECT_MATCH_SPIN     30
-#define SOUND_EFFECT_WIZARD_TIMER   31
-#define SOUND_EFFECT_SPINNER_HIGH   32
-#define SOUND_EFFECT_SPINNER_LOW    33
-#define SOUND_EFFECT_SLING_SHOT     34
-#define SOUND_EFFECT_ROLLOVER       35
-#define SOUND_EFFECT_10PT_SWITCH    36
+#define SOUND_EFFECT_TILT_WARNING       28
+#define SOUND_EFFECT_WIZARD_SCORE       29
+#define SOUND_EFFECT_MATCH_SPIN         30
+#define SOUND_EFFECT_WIZARD_TIMER       31
+#define SOUND_EFFECT_SPINNER_HIGH       32
+#define SOUND_EFFECT_SPINNER_LOW        33
+#define SOUND_EFFECT_SLING_SHOT         34
+#define SOUND_EFFECT_ROLLOVER           35
+#define SOUND_EFFECT_10PT_SWITCH        36
+#define SOUND_EFFECT_BACKGROUND_1       37
+#define SOUND_EFFECT_BACKGROUND_2       38
+#define SOUND_EFFECT_BACKGROUND_3       39
+#define SOUND_EFFECT_BACKGROUND_WIZ     40
 
 #define BUMPER_HITS_UNTIL_INLANES_FLASH 60
 #define BUMPER_HITS_UNTIL_INLANES_LIGHT 40
@@ -358,13 +364,6 @@ void setup() {
   // Read parameters from EEProm
   ReadStoredParameters();
   
-//  for (int count=0; count<4; count++) {
-//    BSOS_SetDisplay(count, HighScore, true, 2);
-//  }
-//
-//  for (byte count=0; count<4; count++) {
-//    CurrentScores[count] = 0;
-//  }
   CurrentScores[0] = STARS2020_MAJOR_VERSION;
   CurrentScores[1] = STARS2020_MINOR_VERSION;
   CurrentScores[2] = BALLY_STERN_OS_MAJOR_VERSION;
@@ -373,15 +372,17 @@ void setup() {
 
   NumStartingStars = 0;
 
+#ifdef USE_WAV_TRIGGER
   // WAV Trigger startup at 57600
-/*  wTrig.start();
+  wTrig.start();
   delay(10);
   
   // Send a stop-all command and reset the sample-rate offset, in case we have
   //  reset while the WAV Trigger was already playing.
   wTrig.stopAllTracks();
   wTrig.samplerateOffset(0);  
-*/
+#endif 
+
   CurrentTime = millis();
   PlaySoundEffect(SOUND_EFFECT_MACHINE_START);
 }
@@ -826,6 +827,30 @@ int RunSelfTest(int curState, boolean curStateChanged) {
 }
 
 
+#ifdef USE_WAV_TRIGGER
+byte CurrentBackgroundSong = SOUND_EFFECT_NONE;
+#endif
+
+
+void PlayBackgroundSong(byte songNum) {
+
+  
+#ifdef USE_WAV_TRIGGER
+  if (CurrentBackgroundSong!=songNum) {
+    if (CurrentBackgroundSong!=SOUND_EFFECT_NONE) wTrig.trackStop(CurrentBackgroundSong);
+    if (songNum!=SOUND_EFFECT_NONE) {
+      wTrig.trackPlayPoly(songNum, true);
+      wTrig.trackLoop(songNum, true);
+    }
+    CurrentBackgroundSong = songNum;
+  }  
+#else
+  byte test = songNum;
+  songNum = test;
+#endif
+
+}
+
 
 unsigned long NextSoundEffectTime = 0;
 
@@ -833,6 +858,10 @@ void PlaySoundEffect(byte soundEffectNum) {
 
   if (MusicLevel==0) return;
 
+#ifdef USE_WAV_TRIGGER
+  if (soundEffectNum==SOUND_EFFECT_BUMPER_HIT || soundEffectNum==SOUND_EFFECT_ROLLOVER || soundEffectNum==SOUND_EFFECT_10PT_SWITCH) wTrig.trackStop(soundEffectNum);
+  wTrig.trackPlayPoly(soundEffectNum);
+#else 
   // Music level 3 = allow melodies to overlap
   if (CurrentTime>NextSoundEffectTime || MusicLevel==3) {
     NextSoundEffectTime = CurrentTime;
@@ -1058,6 +1087,8 @@ void PlaySoundEffect(byte soundEffectNum) {
   }
 
   NextSoundEffectTime += soundGapUL*3;
+#endif 
+  
 }
 
 
@@ -1353,6 +1384,11 @@ int InitializeNewBall(bool curStateChanged, byte playerNum, int ballNum) {
     BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_LEFT, 15, CurrentTime + 20);
     BSOS_PushToTimedSolenoidStack(SOL_DROP_TARGET_RIGHT, 15, CurrentTime + 150);
 
+    byte nextStarLevel = GetNextStarLevel(playerNum);
+    if (nextStarLevel==1) PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_1);
+    else if (nextStarLevel==2) PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_2);
+    else if (nextStarLevel==3) PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_3);
+    
   }
   
   // We should only consider the ball initialized when 
@@ -1588,6 +1624,7 @@ int NormalGamePlay() {
   
             returnState = MACHINE_STATE_NORMAL_GAMEPLAY;          
           } else {
+            PlayBackgroundSong(SOUND_EFFECT_NONE);
             returnState = MACHINE_STATE_COUNTDOWN_BONUS;
           }
         }
@@ -1605,6 +1642,7 @@ int NormalGamePlay() {
         StarGoalComplete[CurrentPlayer] ) {
     WizardModeStartTime = CurrentTime;
     returnState = MACHINE_STATE_WIZARD_MODE;
+    PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_WIZ);
   }
 
   return returnState;
@@ -1941,6 +1979,12 @@ void HandleStarHit(byte switchNum) {
         CurrentScores[CurrentPlayer] += StarLevelAward;
       }
       StarLevelValidated[StarHit[0][CurrentPlayer]-1][CurrentPlayer] = true;
+      
+      byte nextStarLevel = GetNextStarLevel(CurrentPlayer);
+      if (nextStarLevel==1) PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_1);
+      else if (nextStarLevel==2) PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_2);
+      else if (nextStarLevel==3) PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_3);
+      
       if (StarHit[0][CurrentPlayer]==3) {
         StarGoalComplete[CurrentPlayer] = true;
         ShowStarGoalCompleteLights(1);
@@ -2018,6 +2062,7 @@ int WizardMode() {
     BSOS_SetLampState(STAR_YELLOW, 0);
     BSOS_SetLampState(STAR_PURPLE, 0);
     FlipInOutLanesLights();
+    PlayBackgroundSong(SOUND_EFFECT_BACKGROUND_1);
     returnState = MACHINE_STATE_NORMAL_GAMEPLAY;
   }
 
