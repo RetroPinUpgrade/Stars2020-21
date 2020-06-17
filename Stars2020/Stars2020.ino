@@ -23,7 +23,7 @@
 #include "SelfTestAndAudit.h"
 #include <EEPROM.h>
 
-//#define USE_WAV_TRIGGER
+#define USE_WAV_TRIGGER
 
 #ifdef USE_WAV_TRIGGER
 #include <wavTrigger.h>
@@ -859,7 +859,9 @@ void PlaySoundEffect(byte soundEffectNum) {
   if (MusicLevel==0) return;
 
 #ifdef USE_WAV_TRIGGER
-  if (soundEffectNum==SOUND_EFFECT_BUMPER_HIT || soundEffectNum==SOUND_EFFECT_ROLLOVER || soundEffectNum==SOUND_EFFECT_10PT_SWITCH) wTrig.trackStop(soundEffectNum);
+  if (  soundEffectNum==SOUND_EFFECT_BUMPER_HIT || soundEffectNum==SOUND_EFFECT_ROLLOVER || 
+        soundEffectNum==SOUND_EFFECT_10PT_SWITCH || SOUND_EFFECT_SPINNER_HIGH ||
+        SOUND_EFFECT_SPINNER_LOW ) wTrig.trackStop(soundEffectNum);
   wTrig.trackPlayPoly(soundEffectNum);
 #else 
   // Music level 3 = allow melodies to overlap
