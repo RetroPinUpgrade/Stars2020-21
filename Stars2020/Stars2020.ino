@@ -23,7 +23,7 @@
 #include "SelfTestAndAudit.h"
 #include <EEPROM.h>
 
-#define USE_WAV_TRIGGER
+//#define USE_WAV_TRIGGER
 
 #ifdef USE_WAV_TRIGGER
 #include <wavTrigger.h>
