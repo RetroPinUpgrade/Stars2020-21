@@ -23,7 +23,11 @@
 #include "SelfTestAndAudit.h"
 #include <EEPROM.h>
 
+
+// The defines for sound can be used separately or in combination
 //#define USE_WAV_TRIGGER
+#define USE_CHIMES
+
 
 #ifdef USE_WAV_TRIGGER
 #include <wavTrigger.h>
@@ -31,7 +35,7 @@ wavTrigger wTrig;             // Our WAV Trigger object
 #endif 
 
 #define STARS2020_MAJOR_VERSION  2020
-#define STARS2020_MINOR_VERSION  1
+#define STARS2020_MINOR_VERSION  2
 #define DEBUG_MESSAGES  0
 
 
@@ -176,6 +180,7 @@ boolean Left7kLight = false;
 boolean Right7kLight = false;
 boolean RolloverLit = false;
 byte Spinner400Bonus = 0;
+boolean NonLeftSpinnerHit = false;
 
 byte BallSaveNumSeconds = 0;
 boolean BallSaveUsed = false;
@@ -268,7 +273,11 @@ void ReadStoredParameters() {
   if (BallSaveNumSeconds>21) BallSaveNumSeconds = 16;
   
   MusicLevel = ReadSetting(EEPROM_MUSIC_LEVEL_BYTE, 2);
+#ifdef USE_WAV_TRIGGER   
+  if (MusicLevel>5) MusicLevel = 5;
+#else 
   if (MusicLevel>3) MusicLevel = 3;
+#endif
 
   TournamentScoring = (ReadSetting(EEPROM_TOURNAMENT_SCORING_BYTE, 0))?true:false;
   SkillShotAwardsLevel = (ReadSetting(EEPROM_SKILL_SHOT_BYTE, 0))?true:false;
@@ -621,6 +630,15 @@ int RunSelfTest(int curState, boolean curStateChanged) {
   int returnState = curState;
   CurrentNumPlayers = 0;
 
+#ifdef USE_WAV_TRIGGER
+  if (curStateChanged) {
+    // Send a stop-all command and reset the sample-rate offset, in case we have
+    //  reset while the WAV Trigger was already playing.
+    wTrig.stopAllTracks();
+    wTrig.samplerateOffset(0); 
+  }
+#endif 
+
   // Any state that's greater than CHUTE_3 is handled by the Base Self-test code
   // Any that's less, is machine specific, so we handle it here.
   if (curState>=MACHINE_STATE_TEST_CHUTE_3_COINS) {
@@ -670,7 +688,11 @@ int RunSelfTest(int curState, boolean curStateChanged) {
         break;
         case MACHINE_STATE_ADJUST_MUSIC_LEVEL:
           AdjustmentType = ADJ_TYPE_MIN_MAX_DEFAULT;
+#ifdef USE_WAV_TRIGGER          
+          AdjustmentValues[1] = 5;
+#else
           AdjustmentValues[1] = 3;
+#endif
           CurrentAdjustmentByte = &MusicLevel;
           CurrentAdjustmentStorageByte = EEPROM_MUSIC_LEVEL_BYTE;
         break;
@@ -833,17 +855,18 @@ byte CurrentBackgroundSong = SOUND_EFFECT_NONE;
 
 
 void PlayBackgroundSong(byte songNum) {
-
   
 #ifdef USE_WAV_TRIGGER
-  if (CurrentBackgroundSong!=songNum) {
-    if (CurrentBackgroundSong!=SOUND_EFFECT_NONE) wTrig.trackStop(CurrentBackgroundSong);
-    if (songNum!=SOUND_EFFECT_NONE) {
-      wTrig.trackPlayPoly(songNum);
-      wTrig.trackLoop(songNum, true);
-    }
-    CurrentBackgroundSong = songNum;
-  }  
+  if (MusicLevel>4) {
+    if (CurrentBackgroundSong!=songNum) {
+      if (CurrentBackgroundSong!=SOUND_EFFECT_NONE) wTrig.trackStop(CurrentBackgroundSong);
+      if (songNum!=SOUND_EFFECT_NONE) {
+        wTrig.trackPlayPoly(songNum);
+        wTrig.trackLoop(songNum, true);
+      }
+      CurrentBackgroundSong = songNum;
+    }  
+  }
 #else
   byte test = songNum;
   songNum = test;
@@ -859,11 +882,18 @@ void PlaySoundEffect(byte soundEffectNum) {
   if (MusicLevel==0) return;
 
 #ifdef USE_WAV_TRIGGER
-  if (  soundEffectNum==SOUND_EFFECT_BUMPER_HIT || soundEffectNum==SOUND_EFFECT_ROLLOVER || 
-        soundEffectNum==SOUND_EFFECT_10PT_SWITCH || SOUND_EFFECT_SPINNER_HIGH ||
-        SOUND_EFFECT_SPINNER_LOW ) wTrig.trackStop(soundEffectNum);
-  wTrig.trackPlayPoly(soundEffectNum);
-#else 
+  if (MusicLevel>3) {
+    if (  soundEffectNum==SOUND_EFFECT_BUMPER_HIT || soundEffectNum==SOUND_EFFECT_ROLLOVER || 
+          soundEffectNum==SOUND_EFFECT_10PT_SWITCH || SOUND_EFFECT_SPINNER_HIGH ||
+          SOUND_EFFECT_SPINNER_LOW ) wTrig.trackStop(soundEffectNum);
+    wTrig.trackPlayPoly(soundEffectNum);
+  }
+#endif 
+
+#ifdef USE_CHIMES
+  // If the user selects electronic sounds, don't do chimes
+  if (MusicLevel>3) return;
+
   // Music level 3 = allow melodies to overlap
   if (CurrentTime>NextSoundEffectTime || MusicLevel==3) {
     NextSoundEffectTime = CurrentTime;
@@ -1364,6 +1394,7 @@ int InitializeNewBall(bool curStateChanged, byte playerNum, int ballNum) {
     BallTimeInTrough = 0;
     NumTiltWarnings = 0;
     LastTiltWarningTime = 0;
+    NonLeftSpinnerHit = false;
 
     if (NumStartingStars) {
       boolean starSet = false;
@@ -2211,9 +2242,11 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
   boolean lanesFlash = (BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_FLASH) ? true : false;
   boolean lanesOn = (BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_LIGHT) ? true : false;
   byte switchHit;
+  unsigned long numStarsLit = (unsigned long)GetNumStarsLit(CurrentPlayer);
 
   if (NumTiltWarnings<=MaxTiltWarnings) {
     while ( (switchHit=BSOS_PullFirstFromSwitchStack())!=SWITCH_STACK_EMPTY ) {
+      if (switchHit!=SW_LEFT_SPINNER && switchHit!=SW_RIGHT_SPINNER) NonLeftSpinnerHit = true;
   
       switch (switchHit) {
         case SW_SLAM:
@@ -2307,7 +2340,12 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_OUTHOLE:
           break;
         case SW_RIGHT_SPINNER:
-          CurrentScores[CurrentPlayer] += ((unsigned long)GetNumStarsLit(CurrentPlayer))*200;
+         
+          if (numStarsLit) {
+            CurrentScores[CurrentPlayer] += (numStarsLit*200);
+          } else {
+            CurrentScores[CurrentPlayer] += 10;
+          }
           // Allow for right spinner to not start ball save by not setting BallFirstSwitchHitTime
           if (SpinnerChimeBehavior==1) {
             RightSpinnerPhase += 1;
@@ -2322,7 +2360,11 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           if ((NumStartingStars || PlayfieldValidation==0) && BallFirstSwitchHitTime==0) BallFirstSwitchHitTime = CurrentTime;
           break;
         case SW_LEFT_SPINNER:
-          CurrentScores[CurrentPlayer] += (200 + ((unsigned long)Spinner400Bonus)*400);
+          if (NonLeftSpinnerHit==false ) {
+            CurrentScores[CurrentPlayer] += 1000;
+          } else {
+            CurrentScores[CurrentPlayer] += (200 + ((unsigned long)Spinner400Bonus)*400);
+          }
           if (BallFirstSwitchHitTime==0) BallFirstSwitchHitTime = CurrentTime;
           if (DropTargetSpinnerGoal && ((CurrentTime-DropTargetSpinnerGoal)/1000)<DROP_TARGET_GOAL_TIME && BonusX!=6) {
             BonusX = 6;
@@ -2372,10 +2414,11 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
             BumperHits[CurrentPlayer] += 1;
             if (BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_INLANES_LIGHT || BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_INLANES_FLASH) {
               FlipInOutLanesLights();
-            }
-            if (BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_ROLLOVER_LIT) {
+            } else if (BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_ROLLOVER_LIT) {
               RolloverLit = true;
               BSOS_SetLampState(D2_ADVANCE_BONUS, RolloverLit);
+            } else if (BumperHits[CurrentPlayer]>BUMPER_HITS_UNTIL_INLANES_FLASH) {
+              CurrentScores[CurrentPlayer] += 900;
             }
             LastBumperHitTime = CurrentTime;
             if (PlayfieldValidation<2 && BallFirstSwitchHitTime==0) BallFirstSwitchHitTime = CurrentTime;
