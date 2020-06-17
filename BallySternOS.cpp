@@ -421,6 +421,12 @@ void InterruptService2() {
     BSOS_DataRead(ADDRESS_U10_A);
   }
 
+  // If we get a weird interupt from U11B, clear it
+  byte u11BControl = BSOS_DataRead(ADDRESS_U11_B_CONTROL);
+  if (u11BControl & 0x80) {
+    BSOS_DataRead(ADDRESS_U11_B);    
+  }
+
   byte u11AControl = BSOS_DataRead(ADDRESS_U11_A_CONTROL);
   byte u10BControl = BSOS_DataRead(ADDRESS_U10_B_CONTROL);
 
