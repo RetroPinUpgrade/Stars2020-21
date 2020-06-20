@@ -26,10 +26,11 @@
 
 // The defines for sound can be used separately or in combination
 //#define USE_WAV_TRIGGER
+//#define USE_WAV_TRIGGER_1p3
 #define USE_CHIMES
 
 
-#ifdef USE_WAV_TRIGGER
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
 #include <wavTrigger.h>
 wavTrigger wTrig;             // Our WAV Trigger object
 #endif 
@@ -273,7 +274,7 @@ void ReadStoredParameters() {
   if (BallSaveNumSeconds>21) BallSaveNumSeconds = 16;
   
   MusicLevel = ReadSetting(EEPROM_MUSIC_LEVEL_BYTE, 2);
-#ifdef USE_WAV_TRIGGER   
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   if (MusicLevel>5) MusicLevel = 5;
 #else 
   if (MusicLevel>3) MusicLevel = 3;
@@ -381,7 +382,7 @@ void setup() {
 
   NumStartingStars = 0;
 
-#ifdef USE_WAV_TRIGGER
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   // WAV Trigger startup at 57600
   wTrig.start();
   delay(10);
@@ -630,7 +631,7 @@ int RunSelfTest(int curState, boolean curStateChanged) {
   int returnState = curState;
   CurrentNumPlayers = 0;
 
-#ifdef USE_WAV_TRIGGER
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   if (curStateChanged) {
     // Send a stop-all command and reset the sample-rate offset, in case we have
     //  reset while the WAV Trigger was already playing.
@@ -688,7 +689,7 @@ int RunSelfTest(int curState, boolean curStateChanged) {
         break;
         case MACHINE_STATE_ADJUST_MUSIC_LEVEL:
           AdjustmentType = ADJ_TYPE_MIN_MAX_DEFAULT;
-#ifdef USE_WAV_TRIGGER          
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
           AdjustmentValues[1] = 5;
 #else
           AdjustmentValues[1] = 3;
@@ -849,19 +850,23 @@ int RunSelfTest(int curState, boolean curStateChanged) {
 }
 
 
-#ifdef USE_WAV_TRIGGER
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
 byte CurrentBackgroundSong = SOUND_EFFECT_NONE;
 #endif
 
 
 void PlayBackgroundSong(byte songNum) {
   
-#ifdef USE_WAV_TRIGGER
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   if (MusicLevel>4) {
     if (CurrentBackgroundSong!=songNum) {
       if (CurrentBackgroundSong!=SOUND_EFFECT_NONE) wTrig.trackStop(CurrentBackgroundSong);
       if (songNum!=SOUND_EFFECT_NONE) {
+#ifdef USE_WAV_TRIGGER_1p3
+        wTrig.trackPlayPoly(songNum, true);
+#else 
         wTrig.trackPlayPoly(songNum);
+#endif        
         wTrig.trackLoop(songNum, true);
       }
       CurrentBackgroundSong = songNum;
@@ -881,11 +886,14 @@ void PlaySoundEffect(byte soundEffectNum) {
 
   if (MusicLevel==0) return;
 
-#ifdef USE_WAV_TRIGGER
+#if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
   if (MusicLevel>3) {
+
+#ifndef USE_WAV_TRIGGER_1p3    
     if (  soundEffectNum==SOUND_EFFECT_BUMPER_HIT || soundEffectNum==SOUND_EFFECT_ROLLOVER || 
           soundEffectNum==SOUND_EFFECT_10PT_SWITCH || SOUND_EFFECT_SPINNER_HIGH ||
           SOUND_EFFECT_SPINNER_LOW ) wTrig.trackStop(soundEffectNum);
+#endif          
     wTrig.trackPlayPoly(soundEffectNum);
   }
 #endif 
