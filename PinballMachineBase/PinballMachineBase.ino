@@ -49,7 +49,32 @@ void setup() {
   if (DEBUG_MESSAGES) {
     Serial.begin(115200);
   }
-    
+
+  // Start out with everything tri-state, in case the original
+  // CPU is running
+  // Set data pins to input
+  // Make pins 2-7 input
+  DDRD = DDRD & 0x03;
+  // Make pins 8-13 input
+  DDRB = DDRB & 0xC0;
+  // Set up the address lines A0-A5 as input (for now)
+  DDRC = DDRC & 0xC0;
+
+  unsigned long startTime = millis();
+  boolean sawHigh = false;
+  boolean sawLow = false;
+  // for three seconds, look for activity on the VMA line (A5)
+  // If we see anything, then the MPU is active so we shouldn't run
+  while ((millis()-startTime)<1200) {
+    if (digitalRead(A5)) sawHigh = true;
+    else sawLow = true;
+  }
+  // If we saw both a high and low signal, then someone is toggling the 
+  // VMA line, so we should hang here forever (until reset)
+  if (sawHigh && sawLow) {
+    while (1);
+  }
+      
   // Tell the OS about game-specific lights and switches
   BSOS_SetupGameSwitches(NUM_SWITCHES_WITH_TRIGGERS, NUM_PRIORITY_SWITCHES_WITH_TRIGGERS, TriggeredSwitches);
 
