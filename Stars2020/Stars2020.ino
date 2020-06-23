@@ -26,7 +26,7 @@
 
 // The defines for sound can be used separately or in combination
 //#define USE_WAV_TRIGGER
-//#define USE_WAV_TRIGGER_1p3
+#define USE_WAV_TRIGGER_1p3
 #define USE_CHIMES
 
 
@@ -320,7 +320,7 @@ void ReadStoredParameters() {
   if (WizardModeTimeLimit>60) WizardModeTimeLimit = 30;
 
   WizardSwitchReward = BSOS_ReadULFromEEProm(EEPROM_WIZARD_REWARD_BYTE);
-  if (WizardSwitchReward%5000 || WizardSwitchReward>100000) WizardSwitchReward = 50000;
+  if (WizardSwitchReward%5000 || WizardSwitchReward>100000 || WizardSwitchReward==0) WizardSwitchReward = 50000;
 
   AwardScores[0] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_1_EEPROM_START_BYTE);
   AwardScores[1] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_2_EEPROM_START_BYTE);
@@ -617,6 +617,7 @@ void AddCoinToAudit(byte switchHit) {
 #define ADJ_TYPE_MIN_MAX_DEFAULT      3
 #define ADJ_TYPE_SCORE                4
 #define ADJ_TYPE_SCORE_WITH_DEFAULT   5
+#define ADJ_TYPE_SCORE_NO_DEFAULT     6
 byte AdjustmentType = 0;
 byte NumAdjustmentValues = 0;
 byte AdjustmentValues[8];
@@ -780,7 +781,7 @@ int RunSelfTest(int curState, boolean curStateChanged) {
         break;
         
         case MACHINE_STATE_ADJUST_WIZARD_REWARD:
-          AdjustmentType = ADJ_TYPE_SCORE_WITH_DEFAULT;
+          AdjustmentType = ADJ_TYPE_SCORE_NO_DEFAULT;
           CurrentAdjustmentUL = &WizardSwitchReward;
           CurrentAdjustmentStorageByte = EEPROM_WIZARD_REWARD_BYTE;
         break;
@@ -816,10 +817,11 @@ int RunSelfTest(int curState, boolean curStateChanged) {
         }
         *CurrentAdjustmentByte = AdjustmentValues[newIndex];
         if (CurrentAdjustmentStorageByte) EEPROM.write(CurrentAdjustmentStorageByte, AdjustmentValues[newIndex]);
-      } else if (CurrentAdjustmentUL && AdjustmentType==ADJ_TYPE_SCORE_WITH_DEFAULT) {
+      } else if (CurrentAdjustmentUL && (AdjustmentType==ADJ_TYPE_SCORE_WITH_DEFAULT || AdjustmentType==ADJ_TYPE_SCORE_NO_DEFAULT)) {
         unsigned long curVal = *CurrentAdjustmentUL;
         curVal += 5000;
         if (curVal>100000) curVal = 0;
+        if (AdjustmentType==ADJ_TYPE_SCORE_NO_DEFAULT && curVal==0) curVal = 5000;
         *CurrentAdjustmentUL = curVal;
         if (CurrentAdjustmentStorageByte) BSOS_WriteULToEEProm(CurrentAdjustmentStorageByte, curVal);
       }
