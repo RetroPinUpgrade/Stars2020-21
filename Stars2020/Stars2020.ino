@@ -36,7 +36,7 @@ wavTrigger wTrig;             // Our WAV Trigger object
 #endif 
 
 #define STARS2020_MAJOR_VERSION  2020
-#define STARS2020_MINOR_VERSION  2
+#define STARS2020_MINOR_VERSION  3
 #define DEBUG_MESSAGES  0
 
 
@@ -88,7 +88,9 @@ boolean MachineStateChanged = true;
 #define MACHINE_STATE_ADJUST_PLAYFIELD_VALID    -31
 #define MACHINE_STATE_ADJUST_WIZARD_DURATION    -32
 #define MACHINE_STATE_ADJUST_WIZARD_REWARD      -33
-#define MACHINE_STATE_ADJUST_DONE               -34
+#define MACHINE_STATE_ADJUST_DIM_LEVEL          -34
+#define MACHINE_STATE_ADJUST_POP_BUMPER_GOAL    -35
+#define MACHINE_STATE_ADJUST_DONE               -36
 
 #define EEPROM_BALL_SAVE_BYTE           100
 #define EEPROM_FREE_PLAY_BYTE           101
@@ -103,6 +105,8 @@ boolean MachineStateChanged = true;
 #define EEPROM_SCROLLING_SCORES_BYTE    110
 #define EEPROM_PLAYFIELD_VALID_BYTE     111
 #define EEPROM_WIZARD_DURATION_BYTE     112
+#define EEPROM_DIM_LEVEL_BYTE           113
+#define EEPROM_POP_BUMPER_GOAL_BYTE     114
 #define EEPROM_EXTRA_BALL_SCORE_BYTE    140
 #define EEPROM_SPECIAL_SCORE_BYTE       144
 #define EEPROM_STAR_LEVEL_AWARD_BYTE    148
@@ -149,10 +153,6 @@ boolean MachineStateChanged = true;
 #define SOUND_EFFECT_BACKGROUND_2       38
 #define SOUND_EFFECT_BACKGROUND_3       39
 #define SOUND_EFFECT_BACKGROUND_WIZ     40
-
-#define BUMPER_HITS_UNTIL_INLANES_FLASH 60
-#define BUMPER_HITS_UNTIL_INLANES_LIGHT 40
-#define BUMPER_HITS_UNTIL_ROLLOVER_LIT 20
 
 #define SKILL_SHOT_DURATION 15
 #define DROP_TARGET_GOAL_TIME 20
@@ -202,6 +202,8 @@ unsigned long WizardModeStartTime = 0;
 byte MaximumCredits = 5;
 byte BallsPerGame = 3;
 boolean CreditDisplay = false;
+byte DimLevel = 2;
+byte PopBumperGoal = 60;
 byte ScoreAwardReplay = 0;
 boolean HighScoreReplay = false;
 boolean MatchFeature = false;
@@ -321,6 +323,13 @@ void ReadStoredParameters() {
 
   WizardSwitchReward = BSOS_ReadULFromEEProm(EEPROM_WIZARD_REWARD_BYTE);
   if (WizardSwitchReward%5000 || WizardSwitchReward>100000 || WizardSwitchReward==0) WizardSwitchReward = 50000;
+
+  DimLevel = ReadSetting(EEPROM_DIM_LEVEL_BYTE, 2);
+  if (DimLevel<2 || DimLevel>3) DimLevel = 2;
+  BSOS_SetDimDivisor(1, DimLevel);
+
+  PopBumperGoal = ReadSetting(EEPROM_POP_BUMPER_GOAL_BYTE, 60);
+  if (PopBumperGoal%15 || PopBumperGoal==0 || PopBumperGoal>90) PopBumperGoal = 60;
 
   AwardScores[0] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_1_EEPROM_START_BYTE);
   AwardScores[1] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_2_EEPROM_START_BYTE);
@@ -490,8 +499,8 @@ void SetBonusIndicator(byte number, byte state, byte dim, int flashPeriod=0) {
 
 
 void FlipInOutLanesLights() {
-  boolean lanesFlash = (BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_FLASH) ? true : false;
-  boolean lanesOn = (BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_LIGHT) ? true : false;
+  boolean lanesFlash = (BumperHits[CurrentPlayer]>=PopBumperGoal) ? true : false;
+  boolean lanesOn = (BumperHits[CurrentPlayer]>=(PopBumperGoal/3*2)) ? true : false;
 
   InlaneOutlaneToggle = (InlaneOutlaneToggle)?false:true; 
 
@@ -786,6 +795,28 @@ int RunSelfTest(int curState, boolean curStateChanged) {
           CurrentAdjustmentStorageByte = EEPROM_WIZARD_REWARD_BYTE;
         break;
 
+        case MACHINE_STATE_ADJUST_DIM_LEVEL:
+          AdjustmentType = ADJ_TYPE_LIST;
+          NumAdjustmentValues = 2;
+          AdjustmentValues[0] = 2;
+          AdjustmentValues[1] = 3;
+          CurrentAdjustmentByte = &DimLevel;
+          CurrentAdjustmentStorageByte = EEPROM_DIM_LEVEL_BYTE;
+          for (int count=0; count<10; count++) BSOS_SetLampState(D1K_BONUS+count, 1, 1);
+        break;
+        
+        case MACHINE_STATE_ADJUST_POP_BUMPER_GOAL:
+          BSOS_TurnOffAllLamps();
+          AdjustmentType = ADJ_TYPE_LIST;
+          NumAdjustmentValues = 4;
+          AdjustmentValues[0] = 30;
+          AdjustmentValues[1] = 45;
+          AdjustmentValues[2] = 60;
+          AdjustmentValues[3] = 90;
+          CurrentAdjustmentByte = &PopBumperGoal;
+          CurrentAdjustmentStorageByte = EEPROM_POP_BUMPER_GOAL_BYTE;
+        break;
+
         case MACHINE_STATE_ADJUST_DONE:
           returnState = MACHINE_STATE_ATTRACT;
         break;        
@@ -825,7 +856,10 @@ int RunSelfTest(int curState, boolean curStateChanged) {
         *CurrentAdjustmentUL = curVal;
         if (CurrentAdjustmentStorageByte) BSOS_WriteULToEEProm(CurrentAdjustmentStorageByte, curVal);
       }
-      
+
+      if (curState==MACHINE_STATE_ADJUST_DIM_LEVEL) {
+        BSOS_SetDimDivisor(1, DimLevel);
+      }
       if (curState==MACHINE_STATE_ADJUST_REBOOT) {
         returnState = MACHINE_STATE_ATTRACT;     
       }
@@ -840,6 +874,10 @@ int RunSelfTest(int curState, boolean curStateChanged) {
 
   }
 
+  if (curState==MACHINE_STATE_ADJUST_DIM_LEVEL) {
+    for (int count=0; count<10; count++) BSOS_SetLampState(D1K_BONUS+count, 1, (CurrentTime/1000)%2);
+  }
+    
   if (returnState==MACHINE_STATE_ATTRACT) {
     // If any variables have been set to non-override (99), return 
     // them to dip switch settings
@@ -1394,7 +1432,7 @@ int InitializeNewBall(bool curStateChanged, byte playerNum, int ballNum) {
     SetDropTargetRelatedLights(BonusX);
     DropTargetSpinnerGoal = 0;
     FlipInOutLanesLights();
-    if (BumperHits[playerNum]>=BUMPER_HITS_UNTIL_ROLLOVER_LIT) RolloverLit = true;
+    if (BumperHits[playerNum]>=(PopBumperGoal/3)) RolloverLit = true;
     else RolloverLit = false;
     BSOS_SetLampState(D2_ADVANCE_BONUS, RolloverLit);
     BallSaveUsed = false;
@@ -1550,7 +1588,7 @@ int NormalGamePlay() {
   // show the number of hits left until 
   // the inlanes light
   if (!CurrentlyShowingBallSave && (CurrentTime-LastBumperHitTime)<2000) {
-    int bumperHitsLeft = BUMPER_HITS_UNTIL_INLANES_FLASH - BumperHits[CurrentPlayer];
+    int bumperHitsLeft = PopBumperGoal - BumperHits[CurrentPlayer];
     if (bumperHitsLeft>=0) {
       if (LastReportedValue!=bumperHitsLeft) {
         BSOS_SetDisplayCredits(bumperHitsLeft, true);
@@ -1680,7 +1718,7 @@ int NormalGamePlay() {
 
   // Check for Wizard Mode
   if (  WizardModeTimeLimit!=0 && 
-        BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_FLASH && 
+        BumperHits[CurrentPlayer]>=PopBumperGoal && 
         BonusX==6 &&
         StarGoalComplete[CurrentPlayer] ) {
     WizardModeStartTime = CurrentTime;
@@ -2249,8 +2287,8 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
   }
 
 
-  boolean lanesFlash = (BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_FLASH) ? true : false;
-  boolean lanesOn = (BumperHits[CurrentPlayer]>=BUMPER_HITS_UNTIL_INLANES_LIGHT) ? true : false;
+  boolean lanesFlash = (BumperHits[CurrentPlayer]>=PopBumperGoal) ? true : false;
+  boolean lanesOn = (BumperHits[CurrentPlayer]>=(PopBumperGoal/3*2)) ? true : false;
   byte switchHit;
   unsigned long numStarsLit = (unsigned long)GetNumStarsLit(CurrentPlayer);
 
@@ -2422,12 +2460,12 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
             CurrentScores[CurrentPlayer] += 100;
             PlaySoundEffect(SOUND_EFFECT_BUMPER_HIT);
             BumperHits[CurrentPlayer] += 1;
-            if (BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_INLANES_LIGHT || BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_INLANES_FLASH) {
+            if (BumperHits[CurrentPlayer]==(PopBumperGoal/3*2) || BumperHits[CurrentPlayer]==PopBumperGoal) {
               FlipInOutLanesLights();
-            } else if (BumperHits[CurrentPlayer]==BUMPER_HITS_UNTIL_ROLLOVER_LIT) {
+            } else if (BumperHits[CurrentPlayer]==(PopBumperGoal/3)) {
               RolloverLit = true;
               BSOS_SetLampState(D2_ADVANCE_BONUS, RolloverLit);
-            } else if (BumperHits[CurrentPlayer]>BUMPER_HITS_UNTIL_INLANES_FLASH) {
+            } else if (BumperHits[CurrentPlayer]>PopBumperGoal) {
               CurrentScores[CurrentPlayer] += 900;
             }
             LastBumperHitTime = CurrentTime;
