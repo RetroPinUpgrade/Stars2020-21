@@ -35,6 +35,8 @@ volatile byte LampStates[16], LampDim0[16], LampDim1[16];
 volatile int LampFlashPeriod[64];
 volatile int SelfTestMode = 1;
 volatile boolean AttractMode = false;
+byte DimDivisor1 = 2;
+byte DimDivisor2 = 3;
 
 volatile byte SwitchesMinus2[5];
 volatile byte SwitchesMinus1[5];
@@ -641,8 +643,8 @@ void InterruptService2() {
       byte lampOutput = LampStates[lampBitCount];
       // Every other time through the cycle, we OR in the dim variable
       // in order to dim those lights
-      if (numberOfU10Interrupts&0x00000001) lampOutput |= LampDim0[lampBitCount];
-      if (numberOfU10Interrupts%3) lampOutput |= LampDim1[lampBitCount];
+      if (numberOfU10Interrupts%DimDivisor1) lampOutput |= LampDim0[lampBitCount];
+      if (numberOfU10Interrupts%DimDivisor2) lampOutput |= LampDim1[lampBitCount];
 
       BSOS_DataWrite(ADDRESS_U10_A, lampOutput);
       if (BSOS_SLOW_DOWN_LAMP_STROBE) WaitOneClockCycle();
@@ -808,6 +810,10 @@ void BSOS_SetDisplayBIPBlank(byte digitsOn) {
 }
 */
 
+void BSOS_SetDimDivisor(byte level, byte divisor) {
+  if (level==1) DimDivisor1 = divisor;
+  if (level==2) DimDivisor2 = divisor;
+}
 
 void BSOS_SetLampState(int lampNum, byte s_lampState, byte s_lampDim, int s_lampFlashPeriod) {
   if (lampNum>59 || lampNum<0) return;

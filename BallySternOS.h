@@ -21,7 +21,7 @@
 #ifndef BALLY_STERN_OS_H
 
 #define BALLY_STERN_OS_MAJOR_VERSION  1
-#define BALLY_STERN_OS_MINOR_VERSION  1
+#define BALLY_STERN_OS_MINOR_VERSION  2
 
 /*
 struct PlayfieldLight {
@@ -157,6 +157,7 @@ void BSOS_SetLampState(int lampNum, byte s_lampState, byte s_lampDim=0, int s_la
 void BSOS_ApplyFlashToLamps(unsigned long curTime);
 void BSOS_FlashAllLamps(unsigned long curTime); // Self-test function
 void BSOS_TurnOffAllLamps();
+void BSOS_SetDimDivisor(byte level=1, byte divisor=2); // 2 means 50% duty cycle, 3 means 33%, 4 means 25%...
 
 //   Sound
 void BSOS_PlaySoundSquawkAndTalk(byte soundByte);
