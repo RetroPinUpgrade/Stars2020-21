@@ -18,7 +18,7 @@
     See <https://www.gnu.org/licenses/>.
  */
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "SelfTestAndAudit.h"
 #include "BallySternOS.h"
 
