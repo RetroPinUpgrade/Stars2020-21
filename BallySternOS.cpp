@@ -18,7 +18,7 @@
     See <https://www.gnu.org/licenses/>.
  */
  
-#include <arduino.h>
+#include <Arduino.h>
 #include <EEPROM.h>
 #define DEBUG_MESSAGES    1
 #define BALLY_STERN_CPP_FILE
