@@ -18,10 +18,10 @@ Read on for basic instructions on how to build this code.
   * if you want to use your machine's chimes, make sure this line is uncommented:  
    * #define USE_CHIMES  
   * if you have a Wav Trigger installed, uncomment this line 
-   * #define USE_WAV_TRIGGER
-   * or 
-   * #define USE_WAV_TRIGGER_1p3 
+    * #define USE_WAV_TRIGGER
+    * or 
+    * #define USE_WAV_TRIGGER_1p3 
   * NOTE: the code is pushing space limits with both Wav Trigger & Chimes uncommented. You may experience issues if you have both options compiled into your code. If you intend to use the chimes, comment out the Wav Trigger lines (they're commented by default), and if you want to use a Wav Trigger, please comment out the line 
-   * #define USE_CHIMES
+    * #define USE_CHIMES
   
 Refer to the PDF or Wiki for instructions on how to build the hardware.  
