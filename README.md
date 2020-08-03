@@ -2,7 +2,7 @@
 
 Note: This code has a dependency on BallySternOS - it won't build without those files. They're located in a repository here:
 https://github.com/BallySternOS/BallySternOS
-Read on for basic instructions on how to build this code.
+The base library is separated from this implementation so that it can be used by multiple projects without needing to be updated multiple times. For best results, always get all files (both the base library and the Stars2020 files) each time you build. Read on for basic instructions on how to build this code.
 
 
 ### To use this code
