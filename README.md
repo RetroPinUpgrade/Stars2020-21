@@ -1,10 +1,15 @@
 Stars 2020
 ==========
 
-Create a folder called Stars2020 and put these files in it. 
-Then, from the root directory, add the BallySternOS & SelfTestAndAudit files.
-Arduino requires the .ino file be in a directory with the same name.
+THIS CODE HAS A DEPENDENCY ON BallySternOS - it won't build without those files.  
 
-The sound files can be found on Google Drive:
-https://drive.google.com/file/d/1rbLA-aZqXULq8KrAlTwHowQ2WFO9VbFQ/view?usp=sharing
+To use this code, download the zip file (Code > Download ZIP) or clone the repository to your hard drive.  
+Next, get the BallySternOS files ( BallySternOS.* and SelfTestAndAudit.* ) from the repositor here: 
+https://github.com/BallySternOS/BallySternOS/tree/master
 
+Put all the files from this repository in the same folder as the BallySternOS files and name that folder:
+Stars2020  
+  
+Open the Stars2020.ino in Arduino's IDE, and you can build the project.  
+  
+Refer to the PDF or Wiki for instructions on how to build the hardware.  
