@@ -26,8 +26,8 @@
 
 // The defines for sound can be used separately or in combination
 //#define USE_WAV_TRIGGER
-#define USE_WAV_TRIGGER_1p3
-//#define USE_CHIMES
+//#define USE_WAV_TRIGGER_1p3
+#define USE_CHIMES
 
 
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
