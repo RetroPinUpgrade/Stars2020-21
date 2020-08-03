@@ -4,7 +4,8 @@ Stars 2020
 THIS CODE HAS A DEPENDENCY ON BallySternOS - it won't build without those files.  
 
 To use this code, download the zip file (Code > Download ZIP) or clone the repository to your hard drive.  
-Next, get the BallySternOS files ( BallySternOS.* and SelfTestAndAudit.* ) from the repositor here: 
+  
+Next, get the BallySternOS files ( BallySternOS.* and SelfTestAndAudit.* ) from the repository here: 
 https://github.com/BallySternOS/BallySternOS/tree/master
 
 Put all the files from this repository in the same folder as the BallySternOS files and name that folder:
