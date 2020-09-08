@@ -36,7 +36,7 @@ wavTrigger wTrig;             // Our WAV Trigger object
 #endif 
 
 #define STARS2020_MAJOR_VERSION  2020
-#define STARS2020_MINOR_VERSION  4
+#define STARS2020_MINOR_VERSION  5
 #define DEBUG_MESSAGES  0
 
 
