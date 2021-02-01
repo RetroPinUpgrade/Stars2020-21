@@ -21,6 +21,7 @@
 #include "BallySternOS.h"
 #include "SternStarsDefinitions.h"
 #include "SelfTestAndAudit.h"
+#include "BSOS_Config.h"
 #include <EEPROM.h>
 
 
