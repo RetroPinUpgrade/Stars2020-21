@@ -25,19 +25,17 @@
 #include <EEPROM.h>
 
 
-// The defines for sound can be used separately or in combination
-//#define USE_WAV_TRIGGER
-//#define USE_WAV_TRIGGER_1p3
+// Enable the following lines to compile for chimes
 #define USE_CHIMES
 
 
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
-#include <wavTrigger.h>
-wavTrigger wTrig;             // Our WAV Trigger object
+#include "SendOnlyWavTrigger.h"
+SendOnlyWavTrigger wTrig;             // Our WAV Trigger object
 #endif 
 
 #define STARS2020_MAJOR_VERSION  2020
-#define STARS2020_MINOR_VERSION  5
+#define STARS2020_MINOR_VERSION  6
 #define DEBUG_MESSAGES  0
 
 
@@ -388,12 +386,12 @@ void setup() {
   DecodeDIPSwitchParameters();
 
   // Read parameters from EEProm
-  ReadStoredParameters();
-  
+  ReadStoredParameters();  
   CurrentScores[0] = STARS2020_MAJOR_VERSION;
   CurrentScores[1] = STARS2020_MINOR_VERSION;
   CurrentScores[2] = BALLY_STERN_OS_MAJOR_VERSION;
   CurrentScores[3] = BALLY_STERN_OS_MINOR_VERSION;
+
   ResetScoresToClearVersion = true;
 
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
@@ -404,7 +402,7 @@ void setup() {
   // Send a stop-all command and reset the sample-rate offset, in case we have
   //  reset while the WAV Trigger was already playing.
   wTrig.stopAllTracks();
-  wTrig.samplerateOffset(0);  
+//  wTrig.samplerateOffset(0);  
 #endif 
 
   CurrentTime = millis();
@@ -736,7 +734,7 @@ int RunSelfTest(int curState, boolean curStateChanged) {
     // Send a stop-all command and reset the sample-rate offset, in case we have
     //  reset while the WAV Trigger was already playing.
     wTrig.stopAllTracks();
-    wTrig.samplerateOffset(0); 
+//    wTrig.samplerateOffset(0); 
   }
 #endif 
 
@@ -761,7 +759,7 @@ int RunSelfTest(int curState, boolean curStateChanged) {
         BSOS_SetDisplay(count, 0);
         BSOS_SetDisplayBlank(count, 0x00);        
       }
-      BSOS_SetDisplayCredits(abs(curState)-4.);
+      BSOS_SetDisplayCredits(MACHINE_STATE_TEST_SOUNDS - curState);
       BSOS_SetDisplayBallInPlay(0, false);
       CurrentAdjustmentByte = NULL;
       CurrentAdjustmentUL = NULL;
@@ -1323,8 +1321,9 @@ int InitializeGamePlay() {
   CurrentBallInPlay = 1;
   CurrentNumPlayers = 1;
   CurrentPlayer = 0;
-  randomSeed(millis());
-  RovingStarRandomOrder = (byte)random(120);
+  //randomSeed(millis());
+  //RovingStarRandomOrder = (byte)random(120);
+  RovingStarRandomOrder = CurrentTime%120;
 
   Left7kLight = false;
   Right7kLight = false;
@@ -1396,11 +1395,13 @@ int InitializeNewBall(bool curStateChanged, byte playerNum, int ballNum) {
         if (StarHit[count][playerNum]!=0) starsSet += 1;
       }
       if (NumStartingStars==1 && starsSet<1) {
-        byte randomStar = random(0, 5);
+//        byte randomStar = random(0, 5);
+        byte randomStar = CurrentTime%5;
         StarHit[randomStar][playerNum] = 1;
       } else if (NumStartingStars==2 && starsSet<minStars) {
         while(starsSet<minStars) { 
-          byte randomStar = random(0, 5);
+//          byte randomStar = random(0, 5);
+          byte randomStar = CurrentTime%5;
           if (StarHit[randomStar][playerNum]==0) {
             StarHit[randomStar][playerNum] = 1;
             starsSet += 1;
@@ -2303,7 +2304,8 @@ int ShowMatchSequence(boolean curStateChanged) {
   if (curStateChanged) {
     MatchSequenceStartTime = CurrentTime;
     MatchDelay = 1500;
-    MatchDigit = random(0,10);
+//    MatchDigit = random(0,10);
+    MatchDigit = CurrentTime%10;
     NumMatchSpins = 0;
     BSOS_SetLampState(MATCH, 1, 0);
     BSOS_SetDisableFlippers();
