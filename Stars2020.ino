@@ -668,9 +668,9 @@ void ScrollScore(unsigned long score, byte displayNum) {
 boolean AddPlayer(boolean resetNumPlayers=false) {
 
   if (Credits<1 && !FreePlayMode) return false;
+  if (resetNumPlayers) CurrentNumPlayers = 0;
   if (CurrentNumPlayers>=4 || (CurrentNumPlayers>=2 && !MaximumNumber4Players)) return false;
 
-  if (resetNumPlayers) CurrentNumPlayers = 0;
   CurrentNumPlayers += 1;
   BSOS_SetDisplay(CurrentNumPlayers-1, 0);
   BSOS_SetDisplayBlank(CurrentNumPlayers-1, 0x30);
