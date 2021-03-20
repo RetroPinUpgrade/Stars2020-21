@@ -22,6 +22,10 @@ The base library is separated from this implementation so that it can be used by
     * or 
     * #define USE_WAV_TRIGGER_1p3 
   * NOTE: the code is pushing space limits with both Wav Trigger & Chimes uncommented. You may experience issues if you have both options compiled into your code. If you intend to use the chimes, comment out the Wav Trigger lines (they're commented by default), and if you want to use a Wav Trigger, please comment out the line 
-    * #define USE_CHIMES
+    * #define USE_CHIMES  
+
+  
+A zip file with all the WAV files for the sound effects is here:  
+https://drive.google.com/file/d/1rbLA-aZqXULq8KrAlTwHowQ2WFO9VbFQ/view?usp=sharing  
   
 Refer to the PDF or Wiki for instructions on how to build the hardware.  
