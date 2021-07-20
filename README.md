@@ -13,6 +13,7 @@ The base library is separated from this implementation so that it can be used by
 * Unzip the Stars2020 repository and name the folder that it's in as:
   * Stars2020  
 * Copy BallySternOS.* and SelfTestAndAudit.* into the Stars2020 folder
+* REMOVE the file Stars2021.ino from the folder (separate instructions below if you want to build Stars2021)  
 * Open the Stars2020.ino in Arduino's IDE
 * At the top of Stars2020.ino and you'll see a couple of parameters in #define statements
   * if you want to use your machine's chimes, make sure this line is uncommented:  
@@ -29,3 +30,8 @@ A zip file with all the WAV files for the sound effects is here:
 https://drive.google.com/file/d/1rbLA-aZqXULq8KrAlTwHowQ2WFO9VbFQ/view?usp=sharing  
   
 Refer to the PDF or Wiki for instructions on how to build the hardware.  
+  
+  
+## Stars 2021
+If you'd like to try a different version, follow the steps above except name the folder "Stars2021" and remove the Stars2020.ino file. That will compile Stars2021, which has different rules and deeper challenges.  
+Note: Stars2021 doesn't support Chimes. For audio, you'll have to use a Wav Trigger board.  
