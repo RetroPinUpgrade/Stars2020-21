@@ -27,7 +27,7 @@ The base library is separated from this implementation so that it can be used by
 
   
 A zip file with all the WAV files for the sound effects is here:  
-https://drive.google.com/file/d/1rbLA-aZqXULq8KrAlTwHowQ2WFO9VbFQ/view?usp=sharing  
+https://drive.google.com/file/d/10W-ejHtfAnJoimFzfkmMeYZWIZv4Plgj/view?usp=sharing  
   
 Refer to the PDF or Wiki for instructions on how to build the hardware.  
   
