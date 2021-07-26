@@ -168,7 +168,7 @@ boolean MachineStateChanged = true;
 #define SOUND_EFFECT_BONUS_X_INCREASED            22
 
 
-#include "Stars2021Chimes.h"
+//#include "Stars2021Chimes.h"
 
 
 #define SKILL_SHOT_DURATION 15
