@@ -28,15 +28,16 @@
 
 // Hardware Rev 1 generally uses an Arduino Nano & (option) 74125
 // Hardware Rev 2 uses an Arduino Nano, a 74155, and a 74240
-#define BALLY_STERN_OS_HARDWARE_REV   1
+#define BALLY_STERN_OS_HARDWARE_REV   3
 
 
 #define BALLY_STERN_OS_USE_DIP_SWITCHES 
 //#define BALLY_STERN_OS_USE_SQUAWK_AND_TALK
 //#define BALLY_STERN_OS_USE_SB100
 //#define BALLY_STERN_OS_USE_SB300
+#define USE_CHIMES
 //#define USE_WAV_TRIGGER
-//#define USE_WAV_TRIGGER_1p3
+#define USE_WAV_TRIGGER_1p3
 //#define BALLY_STERN_OS_USE_AUX_LAMPS
 //#define BALLY_STERN_OS_USE_7_DIGIT_DISPLAYS
 //#define BALLY_STERN_OS_DIMMABLE_DISPLAYS
@@ -93,14 +94,8 @@
 #define CONTSOL_DISABLE_FLIPPERS      0x40
 #define CONTSOL_DISABLE_COIN_LOCKOUT  0x20
 
-// This define needs to be set for the number of loops 
-// needed to get a delay of 80 us
-// So, set it to (0.000080) / (1/Clock Frequency)
-// Assuming Frequency = 500kHz,  40 = (0.000080) / (1/500000)
-#define BSOS_NUM_SWITCH_LOOPS 70
-// 60 us
-// So, set this to (0.000060) / (1/Clock Frequency)
-#define BSOS_NUM_LAMP_LOOPS   30
+#define BSOS_SWITCH_DELAY_IN_MICROSECONDS 200
+#define BSOS_TIMING_LOOP_PADDING_IN_MICROSECONDS  50
 
 // Fast boards might need a slower lamp strobe
 #define BSOS_SLOW_DOWN_LAMP_STROBE  0

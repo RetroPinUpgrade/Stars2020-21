@@ -28,6 +28,12 @@ SendOnlyWavTrigger wTrig;             // Our WAV Trigger object
 #define DEBUG_MESSAGES  0
 
 
+// Changes:
+//  Bug fix to change music after orange star level up
+//  New dim level (4) for flashing instead of dim
+//  New parameter (23) for music volume (0-99)
+//  New parameter (24) for Holdover stars on by default
+
 
 /*********************************************************************
 
@@ -60,7 +66,9 @@ boolean MachineStateChanged = true;
 #define MACHINE_STATE_ADJUST_EXTRA_BALL_AWARD   -25
 #define MACHINE_STATE_ADJUST_SPECIAL_AWARD      -26
 #define MACHINE_STATE_ADJUST_DIM_LEVEL          -27
-#define MACHINE_STATE_ADJUST_DONE               -28
+#define MACHINE_STATE_ADJUST_BACKGROUND_MUSIC_LEVEL  -28
+#define MACHINE_STATE_ADJUST_HOLDOVER_STARS     -29
+#define MACHINE_STATE_ADJUST_DONE               -30
 
 #define GAME_MODE_SKILL_SHOT                        0
 #define GAME_MODE_AWARD_SHOT                        1
@@ -88,6 +96,8 @@ boolean MachineStateChanged = true;
 #define EEPROM_BALLS_OVERRIDE_BYTE      106
 #define EEPROM_TOURNAMENT_SCORING_BYTE  107
 #define EEPROM_SCROLLING_SCORES_BYTE    110
+#define EEPROM_BACKGROUND_MUSIC_BYTE    111
+#define EEPROM_HOLDOVER_STARS_BYTE      112
 #define EEPROM_DIM_LEVEL_BYTE           113
 #define EEPROM_EXTRA_BALL_SCORE_BYTE    140
 #define EEPROM_SPECIAL_SCORE_BYTE       144
@@ -208,6 +218,8 @@ boolean MatchFeature = true;
 boolean TournamentScoring = false;
 boolean ScrollingScores = true;
 byte BonusUnderlights = BONUS_UNDERLIGHTS_DIM;
+byte BackgroundMusicVolume = 9;
+boolean HoldoverStars = false;
 
 
 /*********************************************************************
@@ -348,6 +360,9 @@ void ReadStoredParameters() {
 
   ScrollingScores = (ReadSetting(EEPROM_SCROLLING_SCORES_BYTE, 1)) ? true : false;
 
+  BackgroundMusicVolume = ReadSetting(EEPROM_BACKGROUND_MUSIC_BYTE, 9);
+  if (BackgroundMusicVolume>9) BackgroundMusicVolume = 9; 
+
   ExtraBallValue = BSOS_ReadULFromEEProm(EEPROM_EXTRA_BALL_SCORE_BYTE);
   if (ExtraBallValue % 1000 || ExtraBallValue > 100000) ExtraBallValue = 20000;
 
@@ -355,8 +370,13 @@ void ReadStoredParameters() {
   if (SpecialValue % 1000 || SpecialValue > 100000) SpecialValue = 40000;
 
   DimLevel = ReadSetting(EEPROM_DIM_LEVEL_BYTE, 2);
-  if (DimLevel < 2 || DimLevel > 3) DimLevel = 2;
-  BSOS_SetDimDivisor(1, DimLevel);
+  if (DimLevel < 2 || DimLevel > 4) DimLevel = 2;
+  if (DimLevel<4) BSOS_SetDimDivisor(1, DimLevel);
+  else BSOS_SetDimDivisor(1, 2);
+
+  byte tempVal = ReadSetting(EEPROM_HOLDOVER_STARS_BYTE, 0);
+  if (tempVal>1) tempVal = 0;
+  HoldoverStars = (tempVal) ? true : false;
 
   AwardScores[0] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_1_EEPROM_START_BYTE);
   AwardScores[1] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_2_EEPROM_START_BYTE);
@@ -532,9 +552,13 @@ void ShowStarsLamps() {
           if (curStarLevel<3 && (StarsHit[CurrentPlayer] & (1<<count))) curStarLevel += 1;
           
           int lampFlash = 0;
-          if (curStarLevel==3) lampFlash = 1000;
-          
-          BSOS_SetLampState(StarLamps[count], curStarLevel, curStarLevel%2, lampFlash);
+          if (curStarLevel==3) lampFlash = 1000;          
+          if (DimLevel==4) {
+            if (curStarLevel==2) lampFlash = 1500;
+            BSOS_SetLampState(StarLamps[count], curStarLevel, 0, lampFlash/2);
+          } else {
+            BSOS_SetLampState(StarLamps[count], curStarLevel, curStarLevel%2, lampFlash);
+          }          
         }
       }
     }
@@ -1140,14 +1164,26 @@ int RunSelfTest(int curState, boolean curStateChanged) {
 
         case MACHINE_STATE_ADJUST_DIM_LEVEL:
           AdjustmentType = ADJ_TYPE_LIST;
-          NumAdjustmentValues = 2;
+          NumAdjustmentValues = 3;
           AdjustmentValues[0] = 2;
           AdjustmentValues[1] = 3;
+          AdjustmentValues[2] = 4;
           CurrentAdjustmentByte = &DimLevel;
           CurrentAdjustmentStorageByte = EEPROM_DIM_LEVEL_BYTE;
 //          for (int count = 0; count < 7; count++) BSOS_SetLampState(MIDDLE_ROCKET_7K + count, 1, 1);
           break;
 
+        case MACHINE_STATE_ADJUST_BACKGROUND_MUSIC_LEVEL:
+          AdjustmentValues[1] = 9;
+          CurrentAdjustmentByte = &BackgroundMusicVolume;
+          CurrentAdjustmentStorageByte = EEPROM_BACKGROUND_MUSIC_BYTE;
+          break;
+
+        case MACHINE_STATE_ADJUST_HOLDOVER_STARS:
+          CurrentAdjustmentByte = (byte *)&HoldoverStars;
+          CurrentAdjustmentStorageByte = EEPROM_HOLDOVER_STARS_BYTE;
+          break;
+          
         case MACHINE_STATE_ADJUST_DONE:
           returnState = MACHINE_STATE_ATTRACT;
           break;
@@ -1189,7 +1225,8 @@ int RunSelfTest(int curState, boolean curStateChanged) {
       }
 
       if (curState == MACHINE_STATE_ADJUST_DIM_LEVEL) {
-        BSOS_SetDimDivisor(1, DimLevel);
+        if (DimLevel<4) BSOS_SetDimDivisor(1, DimLevel);
+        else BSOS_SetDimDivisor(1, 2);
       }
     }
 
@@ -1259,7 +1296,7 @@ void PlayBackgroundSong(byte songNum) {
         wTrig.trackPlayPoly(songNum);
 #endif
         wTrig.trackLoop(songNum, true);
-        wTrig.trackGain(songNum, -4);
+        wTrig.trackGain(songNum, ((int)BackgroundMusicVolume)-9);
       }
       CurrentBackgroundSong = songNum;
     }
@@ -1478,6 +1515,24 @@ void StartScoreAnimation(unsigned long scoreToAnimate) {
 }
 
 
+void LevelUpStars(boolean holdoverShot=false) {
+  if (holdoverShot==false) {
+    SetGameMode(GAME_MODE_STARS_LEVEL_UP_FINISHED);
+    StartScoreAnimation(STAR_LEVEL_UP_REWARD_SCORE*((unsigned long)StarLevel[CurrentPlayer]));
+  }
+
+  if (StarLevel[CurrentPlayer]==3) {
+    PlaySoundEffect(SOUND_EFFECT_STARS_FINISHED);
+    GoalsCompletedFlags[CurrentPlayer] |= GOAL_STARS_LEVEL_THREE_FINISHED;
+  } else {
+    PlaySoundEffect(SOUND_EFFECT_HIT_STAR_LEVEL_UP);
+  }
+  
+  StarLevel[CurrentPlayer] += 1;
+  PlayBackgroundSongBasedOnLevel(StarLevel[CurrentPlayer]);
+  StarsHit[CurrentPlayer] = 0;
+}
+
 
 boolean HandleStarHit(byte switchHit) {
   byte starNum = 255;
@@ -1509,16 +1564,7 @@ boolean HandleStarHit(byte switchHit) {
       // check to see if we've hit the level up star
       if (starNum==StarToHitForLevelUp) {
         // Level-up star was hit
-        PlaySoundEffect(SOUND_EFFECT_HIT_STAR_LEVEL_UP);
-        StarLevel[CurrentPlayer] += 1;
-        PlayBackgroundSongBasedOnLevel(StarLevel[CurrentPlayer]);
-        StarsHit[CurrentPlayer] = 0;
-        SetGameMode(GAME_MODE_STARS_LEVEL_UP_FINISHED);
-        StartScoreAnimation(STAR_LEVEL_UP_REWARD_SCORE*((unsigned long)StarLevel[CurrentPlayer]));
-        if (StarLevel[CurrentPlayer]==3) {
-          PlaySoundEffect(SOUND_EFFECT_STARS_FINISHED);
-          GoalsCompletedFlags[CurrentPlayer] |= GOAL_STARS_LEVEL_THREE_FINISHED;
-        }
+        LevelUpStars();
       } else {
         // Wrong star was hit - give the normal award
         PlaySoundEffect(SOUND_EFFECT_MISSED_STAR_LEVEL_UP);
@@ -1541,8 +1587,7 @@ boolean HandleStarHit(byte switchHit) {
       // Special case for subsequent hit on holding over stars (get a level for subsequent hit)
       if ((HOLDOVER_AWARD_BONUS_X<<starNum)==HOLDOVER_AWARD_STARS_PROGRESS) {
         if (StarLevel[CurrentPlayer]<2) {
-          StarLevel[CurrentPlayer] += 1;
-          StarsHit[CurrentPlayer] = 0;
+          LevelUpStars(true);
         }
       }
     }
@@ -1727,6 +1772,7 @@ int InitGamePlay() {
     Bonus[count] = 0;
     GoalsCompletedFlags[count] = 0;
     HoldoverAwards[count] = 0;
+    if (HoldoverStars) HoldoverAwards[count] = HOLDOVER_AWARD_STARS_PROGRESS;
     StarLevel[count] = 0;
   }
   memset(CurrentScores, 0, 4*sizeof(unsigned long));
