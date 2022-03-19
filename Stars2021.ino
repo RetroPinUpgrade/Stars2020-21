@@ -24,7 +24,7 @@ SendOnlyWavTrigger wTrig;             // Our WAV Trigger object
 #endif
 
 #define STARS2021_MAJOR_VERSION  2021
-#define STARS2021_MINOR_VERSION  1
+#define STARS2021_MINOR_VERSION  2
 #define DEBUG_MESSAGES  0
 
 
