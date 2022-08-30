@@ -28,7 +28,7 @@
 
 // Hardware Rev 1 generally uses an Arduino Nano & (option) 74125
 // Hardware Rev 2 uses an Arduino Nano, a 74155, and a 74240
-#define BALLY_STERN_OS_HARDWARE_REV   3
+#define BALLY_STERN_OS_HARDWARE_REV   2
 
 
 #define BALLY_STERN_OS_USE_DIP_SWITCHES 
@@ -43,6 +43,7 @@
 //#define BALLY_STERN_OS_DIMMABLE_DISPLAYS
 #define BALLY_STERN_OS_SOFTWARE_DISPLAY_INTERRUPT
 //#define BALLY_STERN_OS_ADJUSTABLE_DISPLAY_INTERRUPT
+//#define ENABLE_CPC_SETTINGS
 
 // Fast boards might need a slower lamp strobe
 //#define BSOS_SLOW_DOWN_LAMP_STROBE
@@ -111,6 +112,9 @@
 #define BSOS_CHUTE_2_COINS_START_BYTE             38
 #define BSOS_CHUTE_1_COINS_START_BYTE             42
 #define BSOS_CHUTE_3_COINS_START_BYTE             46
+#define BSOS_CPC_CHUTE_1_SELECTION_BYTE           50
+#define BSOS_CPC_CHUTE_2_SELECTION_BYTE           51
+#define BSOS_CPC_CHUTE_3_SELECTION_BYTE           52
 
 #define BSOS_CONFIG_H
 #endif
