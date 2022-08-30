@@ -18,10 +18,10 @@
     See <https://www.gnu.org/licenses/>.
  */
 
+#include "BSOS_Config.h"
 #include "BallySternOS.h"
 #include "SternStarsDefinitions.h"
 #include "SelfTestAndAudit.h"
-#include "BSOS_Config.h"
 #include <EEPROM.h>
 
 
@@ -169,9 +169,12 @@ boolean MachineStateChanged = true;
 #define STAR_DISPLAY_MODE_FLASH         1
 #define STAR_DISPLAY_MODE_RAPID_FLASH   2
 
+#define COINS_PER_CREDIT  1
+
 unsigned long HighScore = 0;
 unsigned long AwardScores[3];
 byte Credits = 0;
+byte ChuteCoinsInProgress[3] = {0, 0, 0};
 boolean FreePlayMode = false;
 
 byte MusicLevel = 2;
@@ -690,21 +693,85 @@ boolean AddPlayer(boolean resetNumPlayers=false) {
 }
 
 
-void AddCoinToAudit(byte switchHit) {
-
-  unsigned short coinAuditStartByte = 0;
-
-  switch (switchHit) {
-    case SW_COIN_3: coinAuditStartByte = BSOS_CHUTE_3_COINS_START_BYTE; break;
-    case SW_COIN_2: coinAuditStartByte = BSOS_CHUTE_2_COINS_START_BYTE; break;
-    case SW_COIN_1: coinAuditStartByte = BSOS_CHUTE_1_COINS_START_BYTE; break;
-  }
-
-  if (coinAuditStartByte) {
-    BSOS_WriteULToEEProm(coinAuditStartByte, BSOS_ReadULFromEEProm(coinAuditStartByte) + 1);
-  }
-  
+byte SwitchToChuteNum(byte switchHit) {
+  byte chuteNum = 0;
+  if (switchHit==SW_COIN_2) chuteNum = 1;
+  else if (switchHit==SW_COIN_3) chuteNum = 2;
+  return chuteNum;   
 }
+
+unsigned short ChuteAuditByte[] = {BSOS_CHUTE_1_COINS_START_BYTE, BSOS_CHUTE_2_COINS_START_BYTE, BSOS_CHUTE_3_COINS_START_BYTE};
+void AddCoinToAudit(byte chuteNum) {
+  if (chuteNum>2) return;
+  unsigned short coinAuditStartByte = ChuteAuditByte[chuteNum];
+  BSOS_WriteULToEEProm(coinAuditStartByte, BSOS_ReadULFromEEProm(coinAuditStartByte) + 1);
+}
+
+
+void AddCredit(boolean playSound = false, byte numToAdd = 1) {
+  if (Credits < MaximumCredits) {
+    Credits += numToAdd;
+    if (Credits > MaximumCredits) Credits = MaximumCredits;
+    BSOS_WriteByteToEEProm(BSOS_CREDITS_EEPROM_BYTE, Credits);
+    if (playSound) {
+      PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
+    }
+    BSOS_SetDisplayCredits(Credits, !FreePlayMode);
+    BSOS_SetCoinLockout(false);
+  } else {
+    BSOS_SetDisplayCredits(Credits, !FreePlayMode);
+    BSOS_SetCoinLockout(true);
+  }
+
+}
+
+
+boolean AddCoin(byte chuteNum) {
+  boolean creditAdded = false;
+  if (chuteNum>2) return false;
+
+#ifdef ENABLE_CPC_SETTINGS  
+  byte cpcSelection = GetCPCSelection(chuteNum);
+
+  // Find the lowest chute num with the same ratio selection
+  // and use that ChuteCoinsInProgress counter
+  byte chuteNumToUse;
+  for (chuteNumToUse=0; chuteNumToUse<=chuteNum; chuteNumToUse++) {
+    if (GetCPCSelection(chuteNumToUse)==cpcSelection) break;
+  }
+
+  PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
+
+  byte cpcCoins = GetCPCCoins(cpcSelection);
+  byte cpcCredits = GetCPCCredits(cpcSelection);
+  byte coinProgressBefore = ChuteCoinsInProgress[chuteNumToUse];
+  ChuteCoinsInProgress[chuteNumToUse] += 1;
+
+  if (ChuteCoinsInProgress[chuteNumToUse]==cpcCoins) {
+    if (cpcCredits>cpcCoins) AddCredit(false, cpcCredits - (coinProgressBefore));
+    else AddCredit(false, cpcCredits);
+    ChuteCoinsInProgress[chuteNumToUse] = 0;
+    creditAdded = true;
+  } else {
+    if (cpcCredits>cpcCoins) {
+      AddCredit(false, 1);
+      creditAdded = true;
+    } else {
+    }
+  }
+#else
+  ChuteCoinsInProgress[0] += 1;
+  if (ChuteCoinsInProgress[0]==COINS_PER_CREDIT) {
+    PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
+    AddCredit(false, 1);
+    creditAdded = true;
+    ChuteCoinsInProgress[0] = 0;
+  }    
+#endif  
+
+  return creditAdded;
+}
+
 
 
 #define ADJ_TYPE_LIST                 1
@@ -740,9 +807,22 @@ int RunSelfTest(int curState, boolean curStateChanged) {
 
   // Any state that's greater than CHUTE_3 is handled by the Base Self-test code
   // Any that's less, is machine specific, so we handle it here.
-  if (curState>=MACHINE_STATE_TEST_CHUTE_3_COINS) {
-    returnState = RunBaseSelfTest(returnState, curStateChanged, CurrentTime, SW_CREDIT_RESET, SW_SLAM);  
-  } else {
+  if (curState >= MACHINE_STATE_TEST_DONE) {
+//    byte cpcSelection = 0xFF;
+//    byte chuteNum = 0xFF;
+//    if (curState==MACHINE_STATE_ADJUST_CPC_CHUTE_1) chuteNum = 0;
+//    if (curState==MACHINE_STATE_ADJUST_CPC_CHUTE_2) chuteNum = 1;
+//    if (curState==MACHINE_STATE_ADJUST_CPC_CHUTE_3) chuteNum = 2;
+//    if (chuteNum!=0xFF) cpcSelection = GetCPCSelection(chuteNum);
+    returnState = RunBaseSelfTest(returnState, curStateChanged, CurrentTime, SW_CREDIT_RESET, SW_SLAM);
+//    if (chuteNum!=0xFF) {
+//      if (cpcSelection != GetCPCSelection(chuteNum)) {
+//        byte newCPC = GetCPCSelection(chuteNum);
+//        Audio.StopAllAudio();
+//        Audio.PlaySound(SOUND_EFFECT_SELF_TEST_CPC_START+newCPC, AUDIO_PLAY_TYPE_WAV_TRIGGER, 10);
+//      }
+//    }  
+  } else {   
     byte curSwitch = BSOS_PullFirstFromSwitchStack();
 
     if (curSwitch==SW_SELF_TEST_SWITCH && (CurrentTime-GetLastSelfTestChangedTime())>250) {
@@ -1118,21 +1198,6 @@ void PlaySoundEffect(byte soundEffectNum) {
 }
 
 
-void AddCredit(boolean playSound=false, byte numToAdd=1) {
-  if (Credits<MaximumCredits) {
-    Credits+=numToAdd;
-    if (Credits>MaximumCredits) Credits = MaximumCredits;
-    BSOS_WriteByteToEEProm(BSOS_CREDITS_EEPROM_BYTE, Credits);
-    if (playSound) PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
-    BSOS_SetDisplayCredits(Credits);
-    BSOS_SetCoinLockout(false);
-  } else {
-    BSOS_SetDisplayCredits(Credits);
-    BSOS_SetCoinLockout(true);
-  }
-
-}
-
 
 byte AttractSweepLights = 1;
 unsigned long AttractLastSweepTime = 0;
@@ -1265,8 +1330,8 @@ int RunAttractMode(int curState, boolean curStateChanged) {
       if (AddPlayer(true)) returnState = MACHINE_STATE_INIT_GAMEPLAY;
     }
     if (switchHit==SW_COIN_1 || switchHit==SW_COIN_2 || switchHit==SW_COIN_3) {
-      AddCoinToAudit(switchHit);
-      AddCredit(true, 1);
+      AddCoinToAudit(SwitchToChuteNum(switchHit));
+      AddCoin(SwitchToChuteNum(switchHit));
     }
     if (switchHit==SW_SELF_TEST_SWITCH && (CurrentTime-GetLastSelfTestChangedTime())>250) {
       returnState = MACHINE_STATE_TEST_LIGHTS;
@@ -2143,23 +2208,23 @@ void HandleStarHit(byte switchNum) {
   byte nextStarLevel = 0;
 
   switch (switchNum) {
-    case SW_STAR_4:
+    case SW_STAR_4: //White
       rovingStarCheck = 2;
       starID = 0;
       break;
-    case SW_STAR_2:
+    case SW_STAR_2: //Green
       rovingStarCheck = 3;
       starID = 1;
       break;
-    case SW_STAR_5:
+    case SW_STAR_5: //Amber
       rovingStarCheck = 4;
       starID = 2;
       break;
-    case SW_STAR_1:
+    case SW_STAR_1: //Purple
       rovingStarCheck = 1;
       starID = 3;
       break;
-    case SW_STAR_3:
+    case SW_STAR_3: //Yellow
       rovingStarCheck = 5;
       starID = 4;
       break;
@@ -2641,8 +2706,8 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_COIN_1:
         case SW_COIN_2:
         case SW_COIN_3:
-          AddCoinToAudit(switchHit);
-          AddCredit(true, 1);
+          AddCoinToAudit(SwitchToChuteNum(switchHit));
+          AddCoin(SwitchToChuteNum(switchHit));
           break;
         case SW_CREDIT_RESET:
           if (CurrentBallInPlay<2) {
@@ -2676,8 +2741,8 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_COIN_1:
         case SW_COIN_2:
         case SW_COIN_3:
-          AddCoinToAudit(switchHit);
-          AddCredit(true, 1);
+          AddCoinToAudit(SwitchToChuteNum(switchHit));
+          AddCoin(SwitchToChuteNum(switchHit));
           break;
       }
     }
