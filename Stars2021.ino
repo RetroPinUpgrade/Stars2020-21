@@ -24,7 +24,7 @@ SendOnlyWavTrigger wTrig;             // Our WAV Trigger object
 #endif
 
 #define STARS2021_MAJOR_VERSION  2021
-#define STARS2021_MINOR_VERSION  2
+#define STARS2021_MINOR_VERSION  3       //stemple add sfx volume
 #define DEBUG_MESSAGES  0
 
 
@@ -33,6 +33,7 @@ SendOnlyWavTrigger wTrig;             // Our WAV Trigger object
 //  New dim level (4) for flashing instead of dim
 //  New parameter (23) for music volume (0-99)
 //  New parameter (24) for Holdover stars on by default
+//  New parameter (30) for setting gain (Sound SFX volume)   //3-3-2023 Stemple add SFX volume copy over from Galaxy 
 
 
 /*********************************************************************
@@ -55,9 +56,9 @@ boolean MachineStateChanged = true;
 #define MACHINE_STATE_BALL_OVER       100
 #define MACHINE_STATE_MATCH_MODE      110
 
-#define MACHINE_STATE_ADJUST_FREEPLAY           -17
+#define MACHINE_STATE_ADJUST_FREEPLAY           -17  
 #define MACHINE_STATE_ADJUST_BALL_SAVE          -18
-#define MACHINE_STATE_ADJUST_MUSIC_LEVEL        -19
+#define MACHINE_STATE_ADJUST_MUSIC_LEVEL        -19   
 #define MACHINE_STATE_ADJUST_TOURNAMENT_SCORING -20
 #define MACHINE_STATE_ADJUST_TILT_WARNING       -21
 #define MACHINE_STATE_ADJUST_AWARD_OVERRIDE     -22
@@ -68,7 +69,8 @@ boolean MachineStateChanged = true;
 #define MACHINE_STATE_ADJUST_DIM_LEVEL          -27
 #define MACHINE_STATE_ADJUST_BACKGROUND_MUSIC_LEVEL  -28
 #define MACHINE_STATE_ADJUST_HOLDOVER_STARS     -29
-#define MACHINE_STATE_ADJUST_DONE               -30
+#define MACHINE_STATE_ADJUST_SFX_VOLUME         -30   //stemple added for sfx volume
+#define MACHINE_STATE_ADJUST_DONE               -31
 
 #define GAME_MODE_SKILL_SHOT                        0
 #define GAME_MODE_AWARD_SHOT                        1
@@ -95,6 +97,7 @@ boolean MachineStateChanged = true;
 #define EEPROM_AWARD_OVERRIDE_BYTE      105
 #define EEPROM_BALLS_OVERRIDE_BYTE      106
 #define EEPROM_TOURNAMENT_SCORING_BYTE  107
+#define EEPROM_SFX_VOLUME_BYTE          109   //stemple added for sfx volume
 #define EEPROM_SCROLLING_SCORES_BYTE    110
 #define EEPROM_BACKGROUND_MUSIC_BYTE    111
 #define EEPROM_HOLDOVER_STARS_BYTE      112
@@ -204,23 +207,24 @@ unsigned long HighScore = 0;
 unsigned long AwardScores[3];
 byte Credits = 0;
 byte ChuteCoinsInProgress[3] = {0, 0, 0};
-boolean FreePlayMode = false;
-byte MusicLevel = 3;
+boolean FreePlayMode = false;   
+byte MusicLevel = 3;  
 byte BallSaveNumSeconds = 0;
 unsigned long ExtraBallValue = 0;
 unsigned long SpecialValue = 0;
 unsigned long CurrentTime = 0;
 byte MaximumCredits = 40;
-byte BallsPerGame = 3;
+byte BallsPerGame = 3;   
 byte DimLevel = 2;
 byte ScoreAwardReplay = 0;
 boolean HighScoreReplay = true;
 boolean MatchFeature = true;
 boolean TournamentScoring = false;
-boolean ScrollingScores = true;
+boolean ScrollingScores = true;    
 byte BonusUnderlights = BONUS_UNDERLIGHTS_DIM;
 byte BackgroundMusicVolume = 9;
 boolean HoldoverStars = false;
+byte SoundEffectsVolume = 10;  //stemple - add sfx volume
 
 
 /*********************************************************************
@@ -379,6 +383,10 @@ void ReadStoredParameters() {
   if (tempVal>1) tempVal = 0;
   HoldoverStars = (tempVal) ? true : false;
 
+  SoundEffectsVolume = ReadSetting(EEPROM_SFX_VOLUME_BYTE, 10);  //stemple - add sfx volume
+  if (SoundEffectsVolume==0 || SoundEffectsVolume>10) SoundEffectsVolume = 10;
+
+
   AwardScores[0] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_1_EEPROM_START_BYTE);
   AwardScores[1] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_2_EEPROM_START_BYTE);
   AwardScores[2] = BSOS_ReadULFromEEProm(BSOS_AWARD_SCORE_3_EEPROM_START_BYTE);
@@ -417,7 +425,7 @@ void setup() {
 
   StopAudio();
   CurrentTime = millis();
-  PlaySoundEffect(SOUND_EFFECT_MACHINE_START);
+  PlaySoundEffect(SOUND_EFFECT_MACHINE_START, ConvertVolumeSettingToGain(SoundEffectsVolume));  //stemple - add sfx volume  
 }
 
 byte ReadSetting(byte setting, byte defaultValue) {
@@ -973,7 +981,7 @@ boolean AddPlayer(boolean resetNumPlayers = false) {
     BSOS_SetDisplayCredits(Credits);
     BSOS_SetCoinLockout(false);
   }
-  PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1 + (CurrentNumPlayers - 1));
+  PlaySoundEffect(SOUND_EFFECT_ADD_PLAYER_1 + (CurrentNumPlayers - 1), ConvertVolumeSettingToGain(SoundEffectsVolume));  //stemple add sfx volume
 
   BSOS_WriteULToEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE, BSOS_ReadULFromEEProm(BSOS_TOTAL_PLAYS_EEPROM_START_BYTE) + 1);
 
@@ -1001,7 +1009,7 @@ void AddCredit(boolean playSound = false, byte numToAdd = 1) {
     if (Credits > MaximumCredits) Credits = MaximumCredits;
     BSOS_WriteByteToEEProm(BSOS_CREDITS_EEPROM_BYTE, Credits);
     if (playSound) {
-      PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
+      PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT, ConvertVolumeSettingToGain(SoundEffectsVolume));  //stemple - add sfx volume
     }
     BSOS_SetDisplayCredits(Credits, !FreePlayMode);
     BSOS_SetCoinLockout(false);
@@ -1027,7 +1035,7 @@ boolean AddCoin(byte chuteNum) {
     if (GetCPCSelection(chuteNumToUse)==cpcSelection) break;
   }
 
-  PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
+  PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
 
   byte cpcCoins = GetCPCCoins(cpcSelection);
   byte cpcCredits = GetCPCCredits(cpcSelection);
@@ -1049,7 +1057,7 @@ boolean AddCoin(byte chuteNum) {
 #else
   ChuteCoinsInProgress[0] += 1;
   if (ChuteCoinsInProgress[0]==COINS_PER_CREDIT) {
-    PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT);
+    PlaySoundEffect(SOUND_EFFECT_ADD_CREDIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     AddCredit(false, 1);
     creditAdded = true;
     ChuteCoinsInProgress[0] = 0;
@@ -1085,7 +1093,7 @@ void AwardExtraBall() {
     SamePlayerShootsAgain = true;
     BSOS_SetLampState(SHOOT_AGAIN, SamePlayerShootsAgain);
     StopAudio();
-    PlaySoundEffect(SOUND_EFFECT_EXTRA_BALL);
+    PlaySoundEffect(SOUND_EFFECT_EXTRA_BALL, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     PlayBackgroundSongBasedOnLevel(StarLevel[CurrentPlayer]);
     //ResumeBackgroundSong();
   }
@@ -1246,6 +1254,16 @@ int RunSelfTest(int curState, boolean curStateChanged) {
           CurrentAdjustmentStorageByte = EEPROM_HOLDOVER_STARS_BYTE;
           break;
           
+
+        case MACHINE_STATE_ADJUST_SFX_VOLUME:    //#30  --  stemple added sfx volume
+          AdjustmentType = ADJ_TYPE_MIN_MAX;
+          AdjustmentValues[0] = 1;
+          AdjustmentValues[1] = 10;
+          CurrentAdjustmentByte = &SoundEffectsVolume;
+          CurrentAdjustmentStorageByte = EEPROM_SFX_VOLUME_BYTE;
+          break;
+
+
         case MACHINE_STATE_ADJUST_DONE:
           returnState = MACHINE_STATE_ATTRACT;
           break;
@@ -1325,6 +1343,13 @@ int RunSelfTest(int curState, boolean curStateChanged) {
 //  Audio Output functions
 //
 ////////////////////////////////////////////////////////////////////////////
+int VolumeToGainConversion[] = {-70, -18, -16, -14, -12, -10, -8, -6, -4, -2, 0};   //stemple - add sfx volume
+int ConvertVolumeSettingToGain(byte volumeSetting) {  //stemple - add sfx volume
+  if (volumeSetting==0) return -70;
+  if (volumeSetting>10) return 0;
+  return VolumeToGainConversion[volumeSetting];
+}
+
 
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
 byte CurrentBackgroundSong = SOUND_EFFECT_NONE;
@@ -1374,7 +1399,7 @@ void PlayBackgroundSong(byte songNum) {
 
 unsigned long NextSoundEffectTime = 0;
 
-void PlaySoundEffect(byte soundEffectNum) {
+void PlaySoundEffect(byte soundEffectNum, int gain) {     //stemple - added gain for sfx volume
 
   if (MusicLevel == 0) return;
 
@@ -1385,6 +1410,7 @@ void PlaySoundEffect(byte soundEffectNum) {
         SOUND_EFFECT_SPINNER ) wTrig.trackStop(soundEffectNum);
 #endif
   wTrig.trackPlayPoly(soundEffectNum);
+  wTrig.trackGain(soundEffectNum, gain);  //stemple - added sfx volume
 //  char buf[128];
 //  sprintf(buf, "s=%d\n", soundEffectNum);
 //  Serial.write(buf);
@@ -1549,7 +1575,7 @@ void AddToBonus(byte amountToAdd=1) {
     CurrentBonus = MAX_DISPLAY_BONUS;
 
     if ((GoalsCompletedFlags[CurrentPlayer]&GOAL_BONUS_MAX_FINISHED)==0) {
-      PlaySoundEffect(SOUND_EFFECT_BONUS_MAX_ACHIEVED);
+      PlaySoundEffect(SOUND_EFFECT_BONUS_MAX_ACHIEVED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     }
     GoalsCompletedFlags[CurrentPlayer] |= GOAL_BONUS_MAX_FINISHED;
   }
@@ -1584,10 +1610,10 @@ void LevelUpStars(boolean holdoverShot=false) {
   }
 
   if (StarLevel[CurrentPlayer]==3) {
-    PlaySoundEffect(SOUND_EFFECT_STARS_FINISHED);
+    PlaySoundEffect(SOUND_EFFECT_STARS_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     GoalsCompletedFlags[CurrentPlayer] |= GOAL_STARS_LEVEL_THREE_FINISHED;
   } else {
-    PlaySoundEffect(SOUND_EFFECT_HIT_STAR_LEVEL_UP);
+    PlaySoundEffect(SOUND_EFFECT_HIT_STAR_LEVEL_UP, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
   }
   
   StarLevel[CurrentPlayer] += 1;
@@ -1621,7 +1647,7 @@ boolean HandleStarHit(byte switchHit) {
       }
       SetGameMode(GAME_MODE_STARS_LEVEL_UP_MODE);   
       StartScoreAnimation(500*(unsigned long)(StarLevel[CurrentPlayer]+1));
-      PlaySoundEffect(SOUND_EFFECT_STAR_REWARD);
+      PlaySoundEffect(SOUND_EFFECT_STAR_REWARD, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     } else {
       // check to see if we've hit the level up star
       if (starNum==StarToHitForLevelUp) {
@@ -1629,12 +1655,12 @@ boolean HandleStarHit(byte switchHit) {
         LevelUpStars();
       } else {
         // Wrong star was hit - give the normal award
-        PlaySoundEffect(SOUND_EFFECT_MISSED_STAR_LEVEL_UP);
+        PlaySoundEffect(SOUND_EFFECT_MISSED_STAR_LEVEL_UP, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       }
     }
   } else {
     StarAnimationFinish[starNum] = CurrentTime + STAR_LEVEL_ANIMATION_DURATION;
-    PlaySoundEffect(SOUND_EFFECT_STAR_REWARD);
+    PlaySoundEffect(SOUND_EFFECT_STAR_REWARD, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
   }
 
   if (GameMode==GAME_MODE_AWARD_SHOT) {
@@ -1643,7 +1669,7 @@ boolean HandleStarHit(byte switchHit) {
     
     if (!(HoldoverAwards[CurrentPlayer]&(HOLDOVER_AWARD_BONUS_X<<starNum))) {
       // Play sound effect for new holdover
-      PlaySoundEffect(SOUND_EFFECT_BONUS_X_HELD+starNum);
+      PlaySoundEffect(SOUND_EFFECT_BONUS_X_HELD+starNum, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       promptPlayed = true;
     } else {
       // Special case for subsequent hit on holding over stars (get a level for subsequent hit)
@@ -1656,10 +1682,10 @@ boolean HandleStarHit(byte switchHit) {
 
     // Award shot & a skill shot
     if (litStarNum==starNum) {
-      if (!promptPlayed) PlaySoundEffect(SOUND_EFFECT_SKILL_SHOT);
+      if (!promptPlayed) PlaySoundEffect(SOUND_EFFECT_SKILL_SHOT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       StartScoreAnimation(AWARD_SKILL_SHOT_SCORE);
     } else {
-      if (!promptPlayed) PlaySoundEffect(SOUND_EFFECT_STAR_REWARD);
+      if (!promptPlayed) PlaySoundEffect(SOUND_EFFECT_STAR_REWARD, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       StartScoreAnimation(AWARD_SHOT_SCORE);
     }
 
@@ -1687,7 +1713,7 @@ void IncreaseBonusX() {
 
     if (BonusX[CurrentPlayer]==8) {
       if ((GoalsCompletedFlags[CurrentPlayer]&GOAL_DROP_TARGET_MAX_FINISHED)==0) {
-        PlaySoundEffect(SOUND_EFFECT_BONUSX_MAX_FINISHED);
+        PlaySoundEffect(SOUND_EFFECT_BONUSX_MAX_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         soundPlayed = true;
       }
       GoalsCompletedFlags[CurrentPlayer] |= GOAL_DROP_TARGET_MAX_FINISHED;
@@ -1696,7 +1722,7 @@ void IncreaseBonusX() {
 
   if (BonusX[CurrentPlayer]==4) {
     GameMode |= GAME_MODE_FLAG_DROP_TARGET_FRENZY;
-    PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_FRENZY_START);
+    PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_FRENZY_START, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     soundPlayed = true;
     // Add to or set the Frenzy Mode completion
     if (FrenzyModeCompleteTime) {
@@ -1709,7 +1735,7 @@ void IncreaseBonusX() {
   }
 
   if (!soundPlayed) {
-    PlaySoundEffect(SOUND_EFFECT_BONUS_X_INCREASED);
+    PlaySoundEffect(SOUND_EFFECT_BONUS_X_INCREASED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
   }
   
 }
@@ -1732,7 +1758,7 @@ void HandleDropTargetHit(byte switchHit) {
       else LeftDTBankHitOrder = 0;
     } else if (LeftDTBankHitOrder==2 && switchHit==SW_DROP_TARGET_3) {
       StartScoreAnimation(15000);
-      PlaySoundEffect(SOUND_EFFECT_DROP_SEQUENCE_SKILL);
+      PlaySoundEffect(SOUND_EFFECT_DROP_SEQUENCE_SKILL, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       soundPlayed = true;
       awardGiven = true;
       LeftDTBankHitOrder = 0;
@@ -1745,7 +1771,7 @@ void HandleDropTargetHit(byte switchHit) {
       else RightDTBankHitOrder = 0;
     } else if (RightDTBankHitOrder==2 && switchHit==SW_DROP_TARGET_6) {
       StartScoreAnimation(15000);
-      PlaySoundEffect(SOUND_EFFECT_DROP_SEQUENCE_SKILL);
+      PlaySoundEffect(SOUND_EFFECT_DROP_SEQUENCE_SKILL, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       soundPlayed = true;
       awardGiven = true;
       RightDTBankHitOrder = 0;
@@ -1754,20 +1780,20 @@ void HandleDropTargetHit(byte switchHit) {
     if (switchHit==SW_DROP_TARGET_5 && (DropTargetStatus&0x0C)==0x0C) {
       // 7k reward
       awardGiven = true;
-      PlaySoundEffect(SOUND_EFFECT_7K_BONUS);
+      PlaySoundEffect(SOUND_EFFECT_7K_BONUS, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       soundPlayed = true;
       StartScoreAnimation(7000);
     }
     if (switchHit==SW_DROP_TARGET_2 && (DropTargetStatus&0x30)==0x30) {
       // 7k reward
       awardGiven = true;
-      PlaySoundEffect(SOUND_EFFECT_7K_BONUS);
+      PlaySoundEffect(SOUND_EFFECT_7K_BONUS, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       soundPlayed = true;
       StartScoreAnimation(7000);
     }
 
     if (GameMode&GAME_MODE_FLAG_DROP_TARGET_FRENZY) {
-      PlaySoundEffect(SOUND_EFFECT_7K_BONUS);
+      PlaySoundEffect(SOUND_EFFECT_7K_BONUS, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       soundPlayed = true;
       StartScoreAnimation(7000);
       frenzyReset = true;
@@ -1802,7 +1828,7 @@ void HandleDropTargetHit(byte switchHit) {
   }
 
   if (!soundPlayed) {
-    PlaySoundEffect(SOUND_EFFECT_DROP_TARGET);
+    PlaySoundEffect(SOUND_EFFECT_DROP_TARGET, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
   }
 
 }
@@ -1860,7 +1886,7 @@ int InitNewBall(bool curStateChanged, byte playerNum, int ballNum) {
     BSOS_SetDisableFlippers(false);
     BSOS_EnableSolenoidStack();
     BSOS_SetDisplayCredits(Credits, true);
-    if (CurrentNumPlayers>1 && (ballNum!=1 || playerNum!=0) && !SamePlayerShootsAgain) PlaySoundEffect(SOUND_EFFECT_PLAYER_1_UP+playerNum);
+    if (CurrentNumPlayers>1 && (ballNum!=1 || playerNum!=0) && !SamePlayerShootsAgain) PlaySoundEffect(SOUND_EFFECT_PLAYER_1_UP+playerNum, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     SamePlayerShootsAgain = false;
 
     BSOS_SetDisplayBallInPlay(ballNum);
@@ -1981,11 +2007,11 @@ int ManageGameMode() {
   boolean frenzyModeJustFinished = false;
   if (FrenzyModeCompleteTime!=0 && CurrentTime>FrenzyModeCompleteTime) {
     if (CountBits(GameMode&0x70)>1) {
-      PlaySoundEffect(SOUND_EFFECT_MULTI_FRENZY_FINISHED);
+      PlaySoundEffect(SOUND_EFFECT_MULTI_FRENZY_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     } else {
-      if (GameMode&GAME_MODE_FLAG_DROP_TARGET_FRENZY) PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_FRENZY_FINISHED);
-      if (GameMode&GAME_MODE_FLAG_SPINNER_FRENZY) PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY_FINISHED);
-      if (GameMode&GAME_MODE_FLAG_POP_BUMPER_FRENZY) PlaySoundEffect(SOUND_EFFECT_POP_BUMPER_FRENZY_FINISHED);
+      if (GameMode&GAME_MODE_FLAG_DROP_TARGET_FRENZY) PlaySoundEffect(SOUND_EFFECT_DROP_TARGET_FRENZY_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
+      if (GameMode&GAME_MODE_FLAG_SPINNER_FRENZY) PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
+      if (GameMode&GAME_MODE_FLAG_POP_BUMPER_FRENZY) PlaySoundEffect(SOUND_EFFECT_POP_BUMPER_FRENZY_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     }
     frenzyModeJustFinished = true;
     FrenzyModeCompleteTime = 0;
@@ -1999,7 +2025,7 @@ int ManageGameMode() {
   // greater than 
   if (TotalSpins[CurrentPlayer]>SPINNER_MAX_GOAL) {
     if ((GoalsCompletedFlags[CurrentPlayer]&GOAL_SPINNER_MAX_FINISHED)==0) {
-      PlaySoundEffect(SOUND_EFFECT_SPINNER_MAX_FINISHED);
+      PlaySoundEffect(SOUND_EFFECT_SPINNER_MAX_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     }
     GoalsCompletedFlags[CurrentPlayer] |= GOAL_SPINNER_MAX_FINISHED;
   }
@@ -2112,7 +2138,7 @@ int ManageGameMode() {
       }
       if (AlternatingSpinnerPhase>=3) {
         // Star spinner frenzy mode
-        PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY_START);
+        PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY_START, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         GameMode |= GAME_MODE_FLAG_SPINNER_FRENZY;
         // Add to or set the Frenzy Mode completion
         if (FrenzyModeCompleteTime) {
@@ -2145,7 +2171,7 @@ int ManageGameMode() {
         StopAudio();
         GameModeStartTime = CurrentTime;
         GameModeEndTime = CurrentTime + WIZARD_START_DURATION;
-        PlaySoundEffect(SOUND_EFFECT_WIZARD_MODE_START);
+        PlaySoundEffect(SOUND_EFFECT_WIZARD_MODE_START, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         StartScoreAnimation(WIZARD_MODE_REWARD_SCORE);
         WizardScoring = true;
         GoalsCompletedFlags[CurrentPlayer] = GOAL_BONUS_MAX_FINISHED | GOAL_DROP_TARGET_MAX_FINISHED;
@@ -2177,7 +2203,7 @@ int ManageGameMode() {
         for (byte count=0; count<4; count++) {
           if (count!=CurrentPlayer) OverrideScoreDisplay(count, WIZARD_DURATION_SECONDS-LastWizardTimer, true);
         }
-        PlaySoundEffect(SOUND_EFFECT_SLING_SHOT);
+        PlaySoundEffect(SOUND_EFFECT_SLING_SHOT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       }
       
       specialAnimationRunning = true;
@@ -2194,7 +2220,7 @@ int ManageGameMode() {
         StopAudio();
         GameModeStartTime = CurrentTime;
         GameModeEndTime = CurrentTime + WIZARD_FINISHED_DURATION;
-        PlaySoundEffect(SOUND_EFFECT_WIZARD_MODE_FINISHED);
+        PlaySoundEffect(SOUND_EFFECT_WIZARD_MODE_FINISHED, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         ShowPlayerScores(0xFF, false, false);
       }
 
@@ -2247,7 +2273,7 @@ int ManageGameMode() {
         remainingScore = (((CurrentTime-ScoreAdditionAnimationStartTime)-2000)*ScoreAdditionAnimation)/3000;
         if ((remainingScore/1000)!=(LastRemainingAnimatedScoreShown/1000)) {
           LastRemainingAnimatedScoreShown = remainingScore;
-          PlaySoundEffect(SOUND_EFFECT_SLING_SHOT);
+          PlaySoundEffect(SOUND_EFFECT_SLING_SHOT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         }
       } else {
         CurrentScores[CurrentPlayer] += ScoreAdditionAnimation;
@@ -2303,7 +2329,7 @@ int ManageGameMode() {
           if (!BallSaveUsed && ((CurrentTime - BallFirstSwitchHitTime)) < ((unsigned long)BallSaveNumSeconds*1000)) {
             BSOS_PushToTimedSolenoidStack(SOL_OUTHOLE, 4, CurrentTime + 100);
             BallSaveUsed = true;
-//            PlaySoundEffect(SOUND_EFFECT_SHOOT_AGAIN);
+//            PlaySoundEffect(SOUND_EFFECT_SHOOT_AGAIN, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             BSOS_SetLampState(SHOOT_AGAIN, 0);
             BallTimeInTrough = CurrentTime;
             returnState = MACHINE_STATE_NORMAL_GAMEPLAY;
@@ -2312,7 +2338,7 @@ int ManageGameMode() {
             PlayBackgroundSong(SOUND_EFFECT_NONE);
             StopAudio();
 
-            if (CurrentBallInPlay<BallsPerGame) PlaySoundEffect(SOUND_EFFECT_BALL_OVER);
+            if (CurrentBallInPlay<BallsPerGame) PlaySoundEffect(SOUND_EFFECT_BALL_OVER, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             returnState = MACHINE_STATE_COUNTDOWN_BONUS;
           }
         }
@@ -2352,7 +2378,7 @@ int CountdownBonus(boolean curStateChanged) {
 
       // Only give sound & score if this isn't a tilt
       if (NumTiltWarnings <= MaxTiltWarnings) {
-        PlaySoundEffect(SOUND_EFFECT_2X_BONUS_COUNT + (BonusX[CurrentPlayer]/5));
+        PlaySoundEffect(SOUND_EFFECT_2X_BONUS_COUNT + (BonusX[CurrentPlayer]/5), ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         CurrentScores[CurrentPlayer] += 1000*((unsigned long)BonusX[CurrentPlayer]);
       }
 
@@ -2432,8 +2458,8 @@ int ShowMatchSequence(boolean curStateChanged) {
     if (CurrentTime > (MatchSequenceStartTime + MatchDelay)) {
       MatchDigit += 1;
       if (MatchDigit > 9) MatchDigit = 0;
-      //PlaySoundEffect(10+(MatchDigit%2));
-      PlaySoundEffect(SOUND_EFFECT_MATCH_SPIN);
+      //PlaySoundEffect(10+(MatchDigit%2), ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
+      PlaySoundEffect(SOUND_EFFECT_MATCH_SPIN, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       BSOS_SetDisplayBallInPlay((int)MatchDigit * 10);
       MatchDelay += 50 + 4 * NumMatchSpins;
       NumMatchSpins += 1;
@@ -2490,7 +2516,7 @@ void AddPopBumperHit(boolean addToBonus) {
     if (addToBonus && (PopBumperHits[CurrentPlayer]%5)==4) AddToBonus(1);
   }
   if (PopBumperHits[CurrentPlayer]==POP_BUMPER_START_FRENZY_GOAL) {
-    PlaySoundEffect(SOUND_EFFECT_POP_BUMPER_FRENZY_START);
+    PlaySoundEffect(SOUND_EFFECT_POP_BUMPER_FRENZY_START, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
     GameMode |= GAME_MODE_FLAG_POP_BUMPER_FRENZY;
     // Add to or set the Frenzy Mode completion
     if (FrenzyModeCompleteTime) {
@@ -2525,7 +2551,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
     if (GameMode&GAME_MODE_FLAG_POP_BUMPER_FRENZY) GoalsCompletedFlags[CurrentPlayer] |= GOAL_POP_BUMPER_FRENZY_FINISHED;
 
     if (SamePlayerShootsAgain) {
-      PlaySoundEffect(SOUND_EFFECT_SHOOT_AGAIN);
+      PlaySoundEffect(SOUND_EFFECT_SHOOT_AGAIN, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
       returnState = MACHINE_STATE_INIT_NEW_BALL;
     } else {
       
@@ -2539,7 +2565,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
       
       if (CurrentBallInPlay > BallsPerGame) {
         CheckHighScores();
-        PlaySoundEffect(SOUND_EFFECT_GAME_OVER);
+        PlaySoundEffect(SOUND_EFFECT_GAME_OVER, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
         for (int count = 0; count < CurrentNumPlayers; count++) {
           BSOS_SetDisplay(count, CurrentScores[count], true, 2);
         }
@@ -2567,7 +2593,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
 
       if (WizardScoring) {
         if (switchHit!=SW_SLAM && switchHit!=SW_TILT) {
-          PlaySoundEffect(SOUND_EFFECT_WIZARD_SCORE);
+          PlaySoundEffect(SOUND_EFFECT_WIZARD_SCORE, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           CurrentScores[CurrentPlayer] += WIZARD_SWITCH_SCORE;
         }
       }
@@ -2591,10 +2617,10 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
               BSOS_SetDisableFlippers(true);
               BSOS_TurnOffAllLamps();
               StopAudio();
-              PlaySoundEffect(SOUND_EFFECT_TILT);
+              PlaySoundEffect(SOUND_EFFECT_TILT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
               BSOS_SetLampState(TILT, 1);
             }
-            PlaySoundEffect(SOUND_EFFECT_TILT_WARNING);
+            PlaySoundEffect(SOUND_EFFECT_TILT_WARNING, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           }
           break;
         case SW_SELF_TEST_SWITCH:
@@ -2611,7 +2637,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           break;
         case SW_10_PTS:
           TenPointPhase += 1;
-          PlaySoundEffect(SOUND_EFFECT_10PT_SWITCH);
+          PlaySoundEffect(SOUND_EFFECT_10PT_SWITCH, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           CurrentScores[CurrentPlayer] += (ScoreMultiplier)*10;
           if (LanePhase) {
             LanePhase += 1;
@@ -2624,42 +2650,42 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_RIGHT_OUTLANE:
         case SW_LEFT_OUTLANE:
           if (LanePhase==2) {
-            PlaySoundEffect(SOUND_EFFECT_INLANE_LIT);
+            PlaySoundEffect(SOUND_EFFECT_INLANE_LIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             CurrentScores[CurrentPlayer] += (ScoreMultiplier)*(3500);
             AddToBonus(3);
           } else {
-            PlaySoundEffect(SOUND_EFFECT_OUTLANE_UNLIT);
+            PlaySoundEffect(SOUND_EFFECT_OUTLANE_UNLIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             CurrentScores[CurrentPlayer] += ScoreMultiplier*(500);
           }
           if (BallFirstSwitchHitTime == 0) BallFirstSwitchHitTime = CurrentTime;
           break;
         case SW_ROLLOVER:        
           if (GameMode&GAME_MODE_FLAG_POP_BUMPER_FRENZY) {
-            PlaySoundEffect(SOUND_EFFECT_7K_BONUS);
+            PlaySoundEffect(SOUND_EFFECT_7K_BONUS, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             CurrentScores[CurrentPlayer] += ScoreMultiplier*(1000);
             AddToBonus(3);
           } else if (RolloverPhase%2) {
             AddToBonus(RolloverPhase);
-            PlaySoundEffect(SOUND_EFFECT_SPINNER_LOW);
+            PlaySoundEffect(SOUND_EFFECT_SPINNER_LOW, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             RolloverPhase += 1;
           } else {
-            PlaySoundEffect(SOUND_EFFECT_OUTLANE_LIT);
+            PlaySoundEffect(SOUND_EFFECT_OUTLANE_LIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           }
           CurrentScores[CurrentPlayer] += ScoreMultiplier*(500);
           break;
         case SW_RIGHT_INLANE:
         case SW_LEFT_INLANE:
           if (GameMode&GAME_MODE_FLAG_POP_BUMPER_FRENZY) {
-            PlaySoundEffect(SOUND_EFFECT_7K_BONUS);
+            PlaySoundEffect(SOUND_EFFECT_7K_BONUS, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             CurrentScores[CurrentPlayer] += ScoreMultiplier*(5000);
             AddToBonus(6);
           } else if (LanePhase%2) {
-            PlaySoundEffect(SOUND_EFFECT_INLANE_LIT);
+            PlaySoundEffect(SOUND_EFFECT_INLANE_LIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             CurrentScores[CurrentPlayer] += ScoreMultiplier*(3500);
             AddToBonus(3);
             LanePhase += 1;
           } else {
-            PlaySoundEffect(SOUND_EFFECT_INLANE_UNLIT);
+            PlaySoundEffect(SOUND_EFFECT_INLANE_UNLIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
             CurrentScores[CurrentPlayer] += ScoreMultiplier*(500);
           }
           LastInlaneHitTime = CurrentTime; 
@@ -2673,7 +2699,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           if (GameMode & GAME_MODE_FLAG_SPINNER_FRENZY) {
             TotalSpins[CurrentPlayer] += 2;
             CurrentScores[CurrentPlayer] += (unsigned long)5000;
-            PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY);
+            PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           } else {
             if (CurrentTime<AlternatingSpinnerTime) {
               if ((AlternatingSpinnerPhase%2)==0) {
@@ -2681,7 +2707,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
                 AlternatingSpinnerTime = CurrentTime + ALTERNATING_SPINNER_DURATION;
               }
             }
-            PlaySoundEffect(SOUND_EFFECT_SPINNER_LEFT);
+            PlaySoundEffect(SOUND_EFFECT_SPINNER_LEFT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           }
           if (BallFirstSwitchHitTime == 0) BallFirstSwitchHitTime = CurrentTime;
           break;
@@ -2695,7 +2721,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
           if (GameMode & GAME_MODE_FLAG_SPINNER_FRENZY) {
             TotalSpins[CurrentPlayer] += 2;
             CurrentScores[CurrentPlayer] += 5000;
-            PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY);
+            PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           } else {
             if (CurrentTime<AlternatingSpinnerTime) {
               if ((AlternatingSpinnerPhase%2)==1) {
@@ -2703,7 +2729,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
                 AlternatingSpinnerTime = CurrentTime + ALTERNATING_SPINNER_DURATION;
               }
             }
-            PlaySoundEffect(SOUND_EFFECT_SPINNER_HIGH);
+            PlaySoundEffect(SOUND_EFFECT_SPINNER_HIGH, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           }
           if (BallFirstSwitchHitTime == 0) BallFirstSwitchHitTime = CurrentTime;
           break;
@@ -2719,10 +2745,10 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_BUMPER:
           if (GameMode&GAME_MODE_FLAG_POP_BUMPER_FRENZY) {
             CurrentScores[CurrentPlayer] += ScoreMultiplier * (unsigned long)500;
-            PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY);
+            PlaySoundEffect(SOUND_EFFECT_SPINNER_FRENZY, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           } else {
             CurrentScores[CurrentPlayer] += (unsigned long)100;
-            PlaySoundEffect(SOUND_EFFECT_BUMPER_HIT);
+            PlaySoundEffect(SOUND_EFFECT_BUMPER_HIT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           }
           AddPopBumperHit(true);
           if (BallFirstSwitchHitTime == 0) BallFirstSwitchHitTime = CurrentTime;
@@ -2730,7 +2756,7 @@ int RunGamePlayMode(int curState, boolean curStateChanged) {
         case SW_LEFT_SLING:
         case SW_RIGHT_SLING:
           CurrentScores[CurrentPlayer] += 10;
-          PlaySoundEffect(SOUND_EFFECT_SLING_SHOT);
+          PlaySoundEffect(SOUND_EFFECT_SLING_SHOT, ConvertVolumeSettingToGain(SoundEffectsVolume)); //stemple add sfx volume
           AddPopBumperHit(false);
           if (BallFirstSwitchHitTime == 0) BallFirstSwitchHitTime = CurrentTime;
           break;
