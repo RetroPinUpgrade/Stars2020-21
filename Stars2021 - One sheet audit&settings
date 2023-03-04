@@ -1,0 +1,32 @@
+Using the door test switch, cycle through the codes as show on the CREDIT/BALL COUNT display. Use the credit button to change the values stored in the eprom. 
+
+00:01 - Lamps
+XX:XX - Displays
+00:03 - Solenoids
+00:04 - Switches
+00:05 - Sound
+01 - Award Score Level 1
+02 - Award Score Level 2
+03 - Award Score Level 3
+04 - High Score to Date
+05 - Current Credits
+06 - Total plays (Audit)
+07 - Total replays (Audit)
+08 - Total times high score beaten (Audit)
+09 - Chute #2 coins (Audit)
+10 - Chute #1 coins (Audit)
+11 - Chute #3 coins (Audit)
+12 - Free play off/on (0, 1)
+13 - Ball Save Num Seconds (0, 5, 10, 15, 20)
+14 - Music Level (0, 1, 2, 3, 99) [if WAV Trigger is enabled in the build]
+15 - Tournament Scoring (0-no, 1-yes)
+16 - Tilt Warning (0, 1, 2)
+17 - Award Score Override (0 - 7, 99)
+18 - Balls per game Override (3, 5, 99)
+19 - Scrolling Scores (0-no, 1-yes)
+20 - Extra Ball Award (0 - 100,000) [only used for Tournament Scoring]
+21 - Special Award (0 - 100,000) [only used for Tournament Scoring]
+22 - Dim Level (2=50%, 3=33%)
+23 - Background Music level (0-9)
+24 - Hold over stars  (0,1)
+25 - Sound FX volume (0-10)
