@@ -23,7 +23,7 @@
 SendOnlyWavTrigger wTrig;             // Our WAV Trigger object
 #endif
 
-#define STARS2021_MAJOR_VERSION  2021
+#define STARS2021_MAJOR_VERSION  2023
 #define STARS2021_MINOR_VERSION  2
 #define DEBUG_MESSAGES  0
 
@@ -1381,8 +1381,10 @@ void PlaySoundEffect(byte soundEffectNum) {
 #if defined(USE_WAV_TRIGGER) || defined(USE_WAV_TRIGGER_1p3)
 
 #ifndef USE_WAV_TRIGGER_1p3
-  if (  soundEffectNum == SOUND_EFFECT_THUMPER_BUMPER_HIT || 
-        SOUND_EFFECT_SPINNER ) wTrig.trackStop(soundEffectNum);
+  if (  soundEffectNum==SW_BUMPER || 
+        soundEffectNum==SOUND_EFFECT_SPINNER_LOW ||
+        soundEffectNum==SOUND_EFFECT_SPINNER_HIGH ||
+        soundEffectNum==SOUND_EFFECT_SPINNER_LEFT ) wTrig.trackStop(soundEffectNum);
 #endif
   wTrig.trackPlayPoly(soundEffectNum);
 //  char buf[128];
